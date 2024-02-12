@@ -134,10 +134,13 @@ export const take = (n) =>
 export const takeWhile = (pred) =>
   mapcat(v => [pred(v) ? v : reduced(null)])
 
+// takeAll: step through all values given
+export const takeAll = identity
+
 // drop: do not step `n` times.
 export const drop = (n) =>
   (n < 1)
-    ? identity
+    ? takeAll
     : compose(
       reductions((a, v) => {
         if (++a.i > n) {

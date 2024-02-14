@@ -1,5 +1,6 @@
 import util from 'util'
-import { isEmpty, first, rest, last } from './util.js'
+import { derive, isEmpty, first, second, rest, last, identity, is } from './util.js'
+import { keep, remove, forwardErrors } from './xflib.js'
 import {
   $, pathRefToArray, pathRefToString, arrayViaPathRef, isPathRef
 } from './pathref.js'
@@ -14,6 +15,9 @@ const Graph = {
 
 export const getGraph = (x) =>
   x[graphable]()
+
+// Transducer Protocol: for now, any function is a transducer
+export const isXf = is(Function)
 
 // General Code
 const updateIn = (x, [name, ...path], f) => {
@@ -115,10 +119,32 @@ const addLink = (g, [src, dst]) => {
   return g
 }
 
-export const graph = (nodes = {}, links = []) =>
+const makeErrorGraph = (xf) =>
+  graphInner({
+    in: forwardErrors(xf),
+    all: $.in,
+    out: remove(is(Error)),
+    err: keep(is(Error))
+  }, [
+    [$.in, $.out],
+    [$.in, $.err]
+  ],
+  identity)
+
+export const augmentNodes = (nodes) =>
+  Object.fromEntries(
+    Object.entries(nodes)
+      .map(entry => isXf(second(entry))
+        ? [first(entry), makeErrorGraph(second(entry))]
+        : entry))
+
+const graphInner = (nodes, links) =>
   links.reduce(addLink,
-    Object.setPrototypeOf({ nodes, in: {}, out: {} },
+    derive({ nodes, in: {}, out: {} },
       Graph))
+
+export const graph = (nodes = {}, links = []) =>
+  graphInner(augmentNodes(nodes), links)
 
 // chain: return a graph of values chained together with 'in' and 'out' nodes
 // at the top and bottom. Very similar to `compose`.

@@ -4,6 +4,7 @@
 import { opendir } from 'fs/promises'
 import * as r from './reducing.js'
 import { composeGraph } from './xfgraph.js'
+import { derive } from './util.js'
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -104,9 +105,6 @@ const makeEdgeFn = (edgeType, edges) =>
       return []
     }
   }
-
-// Use derive to make efficient clones of nested environments.
-const derive = Object.setPrototypeOf
 
 const runGraph = async (g, context) => {
   const childPromises = []

@@ -18,3 +18,5 @@ export const contains = (...xs) => {
   const o = Object.fromEntries(xs.map(x => [x, true]))
   return x => o[x] || false
 }
+
+export const is = (y) => (x) => (x instanceof y)

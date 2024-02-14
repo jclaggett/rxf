@@ -72,6 +72,13 @@ export const trailing = (n) =>
 export const filter = (pred) =>
   mapcat(v => pred(v) ? [v] : [])
 
+// keep: alias for filter
+export const keep = filter
+
+// remove: Step only if `pred(v)` is false.
+export const remove = (pred) =>
+  filter(x => !pred(x))
+
 // filter2: Step if `pred(v0, v1)` is true. Always step through first value.
 export const filter2 = (pred) =>
   compose(
@@ -285,3 +292,19 @@ export const demultiplex = (n) => {
     })
   }
 }
+// forwardErrors: catch any errors that occur when stepping through
+// the reducer defined by `xf` and forward those errors bypassing `xf`.
+export const forwardErrors = (xf) =>
+  transducer(r1 => {
+    const r2 = xf(r1)
+
+    return {
+      [STEP]: (a, v) => {
+        try {
+          return r2[STEP](a, v)
+        } catch (error) {
+          return r1[STEP](a, error)
+        }
+      }
+    }
+  })

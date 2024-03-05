@@ -1,6 +1,5 @@
 import util from 'util'
-import { derive, isEmpty, first, second, rest, last, identity, is } from './util.js'
-import { keep, remove, forwardErrors } from './xflib.js'
+import { derive, isEmpty, last } from './util.js'
 import {
   $, pathRefToArray, pathRefToString, arrayViaPathRef, isPathRef
 } from './pathref.js'
@@ -15,9 +14,6 @@ const Graph = {
 
 export const getGraph = (x) =>
   x[graphable]()
-
-// Transducer Protocol: for now, any function is a transducer
-export const isXf = is(Function)
 
 // General Code
 const updateIn = (x, [name, ...path], f) => {
@@ -119,41 +115,19 @@ const addLink = (g, [src, dst]) => {
   return g
 }
 
-const makeErrorGraph = (xf) =>
-  graphInner({
-    in: forwardErrors(xf),
-    all: $.in,
-    out: remove(is(Error)),
-    err: keep(is(Error))
-  }, [
-    [$.in, $.out],
-    [$.in, $.err]
-  ],
-  identity)
-
-export const augmentNodes = (nodes) =>
-  Object.fromEntries(
-    Object.entries(nodes)
-      .map(entry => isXf(second(entry))
-        ? [first(entry), makeErrorGraph(second(entry))]
-        : entry))
-
-const graphInner = (nodes, links) =>
+export const graph = (nodes = {}, links = []) =>
   links.reduce(addLink,
     derive({ nodes, in: {}, out: {} },
       Graph))
 
-export const graph = (nodes = {}, links = []) =>
-  graphInner(augmentNodes(nodes), links)
-
 // chain: return a graph of values chained together with 'in' and 'out' nodes
 // at the top and bottom. Very similar to `compose`.
-export const chain = (...xfs) =>
+export const chain = (...nodes) =>
   graph({
-    ...xfs,
+    ...nodes,
     in: $[0],
-    out: $[xfs.length - 1]
-  }, xfs.slice(1).map((_, i) => [$[i], $[i + 1]]))
+    out: $[nodes.length - 1]
+  }, nodes.slice(1).map((_, i) => [$[i], $[i + 1]]))
 
 // Walking Graphs
 const pushCycleCheck = (cycle, x) => {
@@ -186,21 +160,11 @@ const getPaths = (g, dir, path) => {
   return [...paths, ...subpaths.map(path => [name, ...path])]
 }
 
-const hasPaths = (g, dir, path) =>
-  getIn(g[dir], path) != null || (
-    isGraphable(g.nodes[first(path)]) &&
-    hasPaths(g.nodes[first(path)], dir, rest(path)))
-
-const getEdgePaths = (g, dir) =>
-  new Set(Object.keys(g.nodes)
-    .map(name => {
-      const path = normalizePath(g.nodes, dir, [name])
-      return (isBadPath(path) || hasPaths(g, dir, path)
-        ? null
-        : path)
-    })
-    .filter(path => path != null))
-
+/**
+ * prewalk a graph to calculate all parent and child connections for each node
+ * in the graph. This includes nodes found in subgraphs and so simplifies the
+ * actual walk.
+ */
 const prewalk = (rootPaths, getChildPaths) => {
   const prewalkNode = (result, [path, parentPath]) => {
     const childPaths = new Set(getChildPaths(path).map(path => arrayViaPathRef(path)))
@@ -230,15 +194,46 @@ const prewalk = (rootPaths, getChildPaths) => {
     })
 }
 
-export const walk = (g, walkFn, in2out = true) => {
-  const [rootDir, leafDir] = in2out
-    ? ['in', 'out']
-    : ['out', 'in']
-  const rootPaths = getEdgePaths(g, rootDir)
-  const leafPaths = getEdgePaths(g, leafDir)
-  const rootPaths2 = Array.from(rootPaths) // .map and .reduce don't work on sets :-(
+/**
+ * Walk a directed graph `g` starting with the nodes described by `rootPaths`
+ * performing a depth first postwalk using `leafDir` to find all connected
+ * children nodes. At each node, call `walkFn` with three parameters:
+ *
+ * - children: an array of zero or more visited child values
+ * - node: the value of the current node being visited
+ * - context: an object with several values:
+ *   - path: the absolute path to the current node
+ *   - graph: the overall (unwalked) graph
+ *   - root: boolean that is true when node's path is member of `rootPaths`
+ *   - leaf: boolean that is true when node's path is member of `leafPaths`
+ *   - parentPaths: zero or more absolute paths to parent nodes
+ *   - childPaths: zero or more absolute paths to child nodes
+ *
+ * Returns an array of all walked rootNodes (i.e., an array of the return
+ * values of walkedFn)
+ *
+ * Note: some nodes may be visited with no children that are not leafs (if they
+ *       were not listed in `leafPaths`)
+ *
+ */
+export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
+  const rootDir = leafDir === 'out' ? 'in' : 'out'
+
+  const rootPaths = rootPathRefs
+    .map(pathRefToArray)
+    .map(path => normalizePath(g.nodes, rootDir, path))
+  const leafPaths = leafPathRefs
+    .map(pathRefToArray)
+    .map(path => normalizePath(g.nodes, leafDir, path))
+
+  console.dir({ rootPaths, leafPaths })
+
+  const rootPathsSet = new Set(rootPaths)
+  const leafPathsSet = new Set(leafPaths)
+
   const { allParentPaths, allChildPaths } = prewalk(
-    rootPaths2, (path) => getPaths(g, leafDir, path))
+    rootPaths, (path) => getPaths(g, leafDir, path))
+
   const walkNode = (walked, path) => {
     if (getIn(walked, path) === undefined) {
       const parentPaths = Array.from(getIn(allParentPaths, path))
@@ -251,8 +246,8 @@ export const walk = (g, walkFn, in2out = true) => {
           getNode(g, path), {
             path,
             graph: g,
-            root: rootPaths.has(path),
-            leaf: leafPaths.has(path),
+            root: rootPathsSet.has(path),
+            leaf: leafPathsSet.has(path),
             parentPaths,
             childPaths
           }))
@@ -261,8 +256,8 @@ export const walk = (g, walkFn, in2out = true) => {
     return walked
   }
 
-  const walked = rootPaths2.reduce(walkNode, {})
-  return rootPaths2.map(path => getIn(walked, path))
+  const walked = rootPaths.reduce(walkNode, {})
+  return rootPaths.map(path => getIn(walked, path))
 }
 
 export const pg = (g, options = {}) =>

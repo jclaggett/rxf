@@ -6,10 +6,10 @@ import {
   STEP, RESULT,
   transducer, isReduced, reduced, ensureReduced, ensureUnreduced, reduce
 } from './reducing.js'
-import { compose, identity, first, second, rest, last, is } from './util.js'
+import { compose, identity, first, second, rest, last, isa } from './util.js'
 
 // Transducer Protocol: for now, any function is a transducer
-export const isXf = is(Function)
+export const isXf = isa(Function)
 
 // mapcat: call `f` with current value and stepping through all returned values
 export const mapcat = (f) =>

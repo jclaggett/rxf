@@ -19,4 +19,4 @@ export const contains = (...xs) => {
   return x => o[x] || false
 }
 
-export const is = (y) => (x) => (x instanceof y)
+export const isa = (y) => (x) => (x instanceof y)

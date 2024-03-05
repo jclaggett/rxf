@@ -6,7 +6,10 @@ import {
   STEP, RESULT,
   transducer, isReduced, reduced, ensureReduced, ensureUnreduced, reduce
 } from './reducing.js'
-import { compose, identity, first, second, rest, last } from './util.js'
+import { compose, identity, first, second, rest, last, is } from './util.js'
+
+// Transducer Protocol: for now, any function is a transducer
+export const isXf = is(Function)
 
 // mapcat: call `f` with current value and stepping through all returned values
 export const mapcat = (f) =>
@@ -23,10 +26,10 @@ export const mapcat = (f) =>
   })
 export const flatMap = mapcat
 
-export const reductions = (f, initialState) =>
+export const reductions = (f, initializer) =>
   transducer(r => {
     let stepNeverCalled = true
-    let state = initialState
+    let state = initializer() // use a thunk to reduce the odds of state leaking
     return {
       [STEP]: (a, v) => {
         if (stepNeverCalled) {
@@ -65,7 +68,7 @@ export const trailing = (n) =>
         : rest(a)
       a.push(v)
       return a
-    }, []),
+    }, () => []),
     drop(1))
 
 // filter: Step only if `pred(v)` is true.
@@ -107,11 +110,11 @@ export const partition = (width, stride) => {
         }
       }
       return state
-    }, {
+    }, () => ({
       result: null,
       i: stride - width - 1,
       buffer: []
-    }),
+    })),
     drop(1),
     mapcat(state => state.result))
 }
@@ -131,10 +134,10 @@ export const take = (n) =>
           a.vs.push(reduced(null))
         }
         return a
-      }, {
+      }, () => ({
         i: 0,
         vs: []
-      }),
+      })),
       mapcat(a => a.vs))
 
 // takeWhile: only step through while `pred(v)` is true.
@@ -154,10 +157,10 @@ export const drop = (n) =>
           a.vs[0] = v
         }
         return a
-      }, {
+      }, () => ({
         i: 0,
         vs: []
-      }),
+      })),
       mapcat(a => a.vs)
     )
 
@@ -170,10 +173,10 @@ export const dropWhile = (pred) =>
         a.vs[0] = v
       }
       return a
-    }, {
+    }, () => ({
       stillDropping: true,
       vs: []
-    }),
+    })),
     mapcat(a => a.vs))
 
 // prolog & epilog: step an initial value before first step and a final value
@@ -228,7 +231,7 @@ export const multiplex = (xfs) =>
   // rs: the muliplexed reducers all sharing r2
   // returned reducer: applies all rs reducers
   (xfs.length === 0)
-    ? identity // trivial case: zero transducers to multiplex
+    ? dropAll // trivial case: zero transducers to multiplex
     : (xfs.length === 1)
         ? xfs[0] // trivial case: no need to multiplex one transducer
         : transducer(r1 => {
@@ -260,7 +263,7 @@ export const multiplex = (xfs) =>
 
 export const demultiplex = (n) => {
   if (n < 2) {
-    return identity // trivial case
+    return takeAll // trivial case
   } else {
     let expectedResultCalls = n
     let sharedReducer = null
@@ -292,6 +295,7 @@ export const demultiplex = (n) => {
     })
   }
 }
+
 // forwardErrors: catch any errors that occur when stepping through
 // the reducer defined by `xf` and forward those errors bypassing `xf`.
 export const forwardErrors = (xf) =>

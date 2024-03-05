@@ -2,9 +2,71 @@
 // transducer graphs and to provide runners that 'transduce' values from
 // sources into sinks via a given graph.
 import { opendir } from 'fs/promises'
+
 import * as r from './reducing.js'
+import { $ } from './pathref.js'
 import { composeGraph } from './xfgraph.js'
-import { derive } from './util.js'
+import { derive, first, isa, identity } from './util.js'
+import { forwardErrors, remove, keep, isXf } from './xflib.js'
+import { graph, isGraphable } from './graph.js'
+
+const isArray = isa(Array)
+export const isEdge = (x) =>
+  isArray(x) &&
+  (first(x) === 'source' ||
+    first(x) === 'sink' ||
+    first(x) === 'edge')
+
+const makeIOGraph = (inputNodes) =>
+  graph({
+    ...inputNodes,
+    out: remove(isa(Error)),
+    err: keep(isa(Error))
+  }, [
+    [$.all, $.out],
+    [$.all, $.err]
+  ])
+
+const makeErrorGraph = (xf) =>
+  makeIOGraph({
+    in: forwardErrors(xf),
+    all: $.in
+  })
+
+const makeEdgeGraph = (edge) =>
+  makeIOGraph({
+    in: identity, // TODO: send inputs to all asynchronously
+    all: edge
+  })
+
+const augmentNode = (node) =>
+  isXf(node)
+    ? makeErrorGraph(node)
+    : isEdge(node)
+      ? makeEdgeGraph(node)
+      : node
+
+const augmentNodes = (nodes) =>
+  Object.fromEntries(
+    Object.entries(nodes)
+      .map(([key, node]) => [key, augmentNode(node)]))
+
+/**
+ * Take a graph spec `g` and tranform/normalize the nodes as appropriate.
+ * Currently, augmentNodes converts transducer and edge nodes into subgraphs
+ * that capture errors and forward them as appropriate.
+ */
+export const iograph = (nodes = {}, links = []) =>
+  graph(augmentNodes(nodes), links)
+
+/**
+ * Return an array of all 'edge' nodes defined in `g` which is assumed to be a
+ * directed graph defined by `graph2`.
+ */
+export const findEdges = (g) =>
+  Object.entries(g.nodes)
+    .filter(([_, node]) => isGraphable(node) && isEdge(node))
+    .map(first)
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -118,9 +180,15 @@ const runGraph = async (g, context) => {
     pipe: pipeSinkConstructor(pipes)
   }, context.sinks)
 
+  const edges = findEdges(g)
+  const rootPathRefs = edges.map(edge => $[edge].all)
+  const leafPathRefs = edges.map(edge => $[edge].in)
+
   const xfs = composeGraph(g, {
     leafFn: makeEdgeFn('sink', sinks),
-    rootFn: makeEdgeFn('source', sources)
+    rootFn: makeEdgeFn('source', sources),
+    leafPathRefs,
+    rootPathRefs
   })
 
   const rf = r.nullReducer

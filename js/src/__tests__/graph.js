@@ -4,7 +4,7 @@
 
 import { jest } from '@jest/globals'
 import { $, pathRefToArray } from '../pathref'
-import { graph, walk, chain, pg } from '../graph'
+import { graph, walkGraph, chain, pg } from '../graph'
 
 const s = (...args) => new Set(args)
 
@@ -142,14 +142,14 @@ test('walking graphs', () => {
       [$.a.in, $.a.out]
     ])
 
-  expect(walk(g, (a, v) => [v, ...a]))
+  expect(walkGraph(g, [$[1], $.a.in], [], (a, v) => [v, ...a]))
     .toStrictEqual([[22, [97]], [34, [42, [56, [78]], [97]]]])
 
-  expect(walk(g, (a, v) => [v, ...a], false))
+  expect(walkGraph(g, [$.b.out, $.c], [], (a, v) => [v, ...a], 'in'))
     .toStrictEqual([[78, [56, [42, [34]]]], [97, [22], [42, [34]]]])
 
   expect(() =>
-    walk(
+    walkGraph(
       graph(
         {
           1: 22,
@@ -164,7 +164,10 @@ test('walking graphs', () => {
           [$.a.in, $.a.out],
           [$.b.out, $.a.out]
         ]),
-      (a, v) => [v, ...a]))
+      [$[1], $.a],
+      [],
+      (a, v) => [v, ...a])
+  )
     .toThrow()
 })
 

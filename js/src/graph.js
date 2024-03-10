@@ -226,8 +226,6 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
     .map(pathRefToArray)
     .map(path => normalizePath(g.nodes, leafDir, path))
 
-  console.dir({ rootPaths, leafPaths })
-
   const rootPathsSet = new Set(rootPaths)
   const leafPathsSet = new Set(leafPaths)
 

@@ -17,21 +17,29 @@ const T = (xf, data) =>
 test('composeGraph works', () => {
   expect(composeGraph(graph(), {
     leafFn: (_path, _value) => [],
-    rootFn: (_path, _value, xf) => xf
+    rootFn: (_path, _value, xf) => xf,
+    leafPathRefs: [],
+    rootPathRefs: []
   }))
     .toStrictEqual([])
 })
 
-test('xfgraph works', () => {
+test('empty xfgraph works', () => {
   expect(T(xfgraph(graph()), []))
     .toStrictEqual([])
+})
 
+test('xfgraph works', () => {
   const g = graph({
     a: identity,
     b: identity,
     c: map(x => x + 1),
     d: take(1)
-  }, [[$.a, $.c], [$.a, $.d], [$.b, $.d]])
+  }, [
+    [$.a, $.c],
+    [$.a, $.d],
+    [$.b, $.d]
+  ])
 
   expect(T(xfgraph(g), [['a', 3], ['b', 2]]))
     .toStrictEqual([['c', 4], ['d', 3], ['d'], ['c']])

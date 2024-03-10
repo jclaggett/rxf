@@ -2,14 +2,14 @@
 
 import * as rxf from '../src/index.js'
 import {
-  $, chain, graph, takeWhile, mapjoin, map, sink, source, prolog, identity,
+  $, takeWhile, mapjoin, map, sink, source, prolog, identity,
   after
 } from '../src/index.js'
 
 const dirGraph = ([dirname, ...dirnames], { padding, useTitles }) =>
-  graph({
+  rxf.iograph({
     entries: source('dir', dirname),
-    entryNames: chain(
+    entryNames: rxf.iochain(
       map(x => `${padding}${x.name}`),
       useTitles ? prolog(`\n${dirname}`) : identity
     ),
@@ -27,7 +27,7 @@ const dirGraph = ([dirname, ...dirnames], { padding, useTitles }) =>
   ])
 
 export const lsGraph = () =>
-  graph({
+  rxf.iograph({
     // Act 1: Collect configuration and start processing dirnames
     init: source('init'),
 

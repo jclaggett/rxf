@@ -8,7 +8,7 @@ import { $ } from './pathref.js'
 import { composeGraph } from './xfgraph.js'
 import { derive, first, isa, identity } from './util.js'
 import { forwardErrors, remove, keep, isXf } from './xflib.js'
-import { graph, isGraphable } from './graph.js'
+import { graph, chain, isGraphable } from './graph.js'
 
 const isArray = isa(Array)
 export const isEdge = (x) =>
@@ -17,7 +17,7 @@ export const isEdge = (x) =>
     first(x) === 'sink' ||
     first(x) === 'edge')
 
-const makeIOGraph = (inputNodes) =>
+const makeIOSubgraph = (inputNodes) =>
   graph({
     ...inputNodes,
     out: remove(isa(Error)),
@@ -28,13 +28,13 @@ const makeIOGraph = (inputNodes) =>
   ])
 
 const makeErrorGraph = (xf) =>
-  makeIOGraph({
+  makeIOSubgraph({
     in: forwardErrors(xf),
     all: $.in
   })
 
 const makeEdgeGraph = (edge) =>
-  makeIOGraph({
+  makeIOSubgraph({
     in: identity, // TODO: send inputs to all asynchronously
     all: edge
   })
@@ -60,12 +60,18 @@ export const iograph = (nodes = {}, links = []) =>
   graph(augmentNodes(nodes), links)
 
 /**
+ * Define an iograph as a chain of nodes
+ */
+export const iochain = (...nodes) =>
+  chain(...augmentNodes(nodes))
+
+/**
  * Return an array of all 'edge' nodes defined in `g` which is assumed to be a
  * directed graph defined by `graph2`.
  */
 export const findEdges = (g) =>
   Object.entries(g.nodes)
-    .filter(([_, node]) => isGraphable(node) && isEdge(node))
+    .filter(([_, node]) => isGraphable(node) && isEdge(node.nodes.all))
     .map(first)
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
@@ -98,6 +104,9 @@ export const sources = {
         const dir = await opendir(path)
         for await (const dirent of dir) {
           a = rf[r.STEP](a, dirent)
+          if (r.isReduced(a)) {
+            break
+          }
         }
         return a
       }

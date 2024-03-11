@@ -31,15 +31,18 @@ test('empty xfgraph works', () => {
 
 test('xfgraph works', () => {
   const g = graph({
-    a: identity,
-    b: identity,
-    c: map(x => x + 1),
-    d: take(1)
-  }, [
-    [$.a, $.c],
-    [$.a, $.d],
-    [$.b, $.d]
-  ])
+    nodes: {
+      a: identity,
+      b: identity,
+      c: map(x => x + 1),
+      d: take(1)
+    },
+    links: [
+      [$.a, $.c],
+      [$.a, $.d],
+      [$.b, $.d]
+    ]
+  })
 
   expect(T(xfgraph(g), [['a', 3], ['b', 2]]))
     .toStrictEqual([['c', 4], ['d', 3], ['d'], ['c']])
@@ -47,13 +50,16 @@ test('xfgraph works', () => {
 
 test('mapjoin works', () => {
   expect(T(xfgraph(graph({
-    a: identity,
-    b: identity,
-    c: mapjoin((x, y) => x + y, [true, false])
-  }, [
-    [$.a, $.c[0]],
-    [$.b, $.c[1]]
-  ])), [
+    nodes: {
+      a: identity,
+      b: identity,
+      c: mapjoin((x, y) => x + y, [true, false])
+    },
+    links: [
+      [$.a, $.c[0]],
+      [$.b, $.c[1]]
+    ]
+  })), [
     ['a', 3], ['b', 2], ['b', 3], ['b', 4], ['a', 5]
   ]))
     .toStrictEqual([['c', 5], ['c', 9], ['c']])

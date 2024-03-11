@@ -101,8 +101,10 @@ export const mapjoin = (f, actives) => {
   })
 
   return graph({
-    ...actives.map((_, i) => map(x => [i, x])),
-    out: joiner
-  },
-  actives.map((_, i) => [$[i], $.out]))
+    nodes: {
+      ...actives.map((_, i) => map(x => [i, x])),
+      out: joiner
+    },
+    links: actives.map((_, i) => [$[i], $.out])
+  })
 }

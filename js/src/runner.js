@@ -19,13 +19,16 @@ export const isEdge = (x) =>
 
 const makeIOSubgraph = (inputNodes) =>
   graph({
-    ...inputNodes,
-    out: remove(isa(Error)),
-    err: keep(isa(Error))
-  }, [
-    [$.all, $.out],
-    [$.all, $.err]
-  ])
+    nodes: {
+      ...inputNodes,
+      out: remove(isa(Error)),
+      err: keep(isa(Error))
+    },
+    links: [
+      [$.all, $.out],
+      [$.all, $.err]
+    ]
+  })
 
 const makeErrorGraph = (xf) =>
   makeIOSubgraph({
@@ -56,8 +59,11 @@ const augmentNodes = (nodes) =>
  * Currently, augmentNodes converts transducer and edge nodes into subgraphs
  * that capture errors and forward them as appropriate.
  */
-export const iograph = (nodes = {}, links = []) =>
-  graph(augmentNodes(nodes), links)
+export const iograph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
+  graph({
+    nodes: augmentNodes(nodes),
+    links
+  })
 
 /**
  * Define an iograph as a chain of nodes

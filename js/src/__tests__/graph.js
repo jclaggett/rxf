@@ -14,41 +14,54 @@ const dePathRef = (g) => {
   return g
 }
 
+const inAndOut = (g) => ({ in: g['in'], out: g['out'] })
+
 test('defining graphs', () => {
   expect(graph())
-    .toStrictEqual({ nodes: {}, in: {}, out: {} })
-  expect(graph({}, []))
-    .toStrictEqual({ nodes: {}, in: {}, out: {} })
+    .toStrictEqual({ nodes: {}, links: [], in: {}, out: {} })
+  expect(graph({}))
+    .toStrictEqual({ nodes: {}, links: [], in: {}, out: {} })
+  expect(graph({ nodes: {}, links: [] }))
+    .toStrictEqual({ nodes: {}, links: [], in: {}, out: {} })
   expect(() => graph({
-  }, [
-    [$.a, $.b]
-  ]))
+    nodes: {},
+    links: [
+      [$.a, $.b]
+    ]
+  }))
     .toThrow()
 
-  expect(graph({
-    a: 43, b: true
-  }, [
-    [$.a, $.b]
-  ]))
+  const g = graph({
+    nodes: {
+      a: 43,
+      b: true
+    },
+    links: [
+      [$.a, $.b]
+    ]
+  })
+  expect(inAndOut(g))
     .toStrictEqual({
-      nodes: { a: 43, b: true },
       in: { b: s(['a']) },
       out: { a: s(['b']) }
     })
 
-  expect(dePathRef(graph({
-    a: 24,
-    b: 'hello',
-    in: $.a,
-    out: $.b
-  }, [
-    [$.a, $.b],
-    [$.a, $.b],
-    [$.in, $.out],
-    [$.b, $.b]
-  ])))
+  const g2 = graph({
+    nodes: {
+      a: 24,
+      b: 'hello',
+      in: $.a,
+      out: $.b
+    },
+    links: [
+      [$.a, $.b],
+      [$.a, $.b],
+      [$.in, $.out],
+      [$.b, $.b]
+    ]
+  })
+  expect(inAndOut(g2))
     .toStrictEqual({
-      nodes: { a: 24, b: 'hello', in: ['a'], out: ['b'] },
       in: { b: s(['a'], ['b']) },
       out: { a: s(['b']), b: s(['b']) }
     })
@@ -56,91 +69,105 @@ test('defining graphs', () => {
 
 test('self-referencing alias fails', () => {
   expect(() => graph({
-    a: $.b, b: $.a
-  }, [
-    [$.a, $.b]
-  ]))
+    nodes: {
+      a: $.b, b: $.a
+    },
+    links: [
+      [$.a, $.b]
+    ]
+  }))
     .toThrow()
 })
 
 test('subgraphs missing "out" node fails', () => {
   expect(() => graph({
-    a: graph(), b: true
-  }, [
-    [$.a, $.b]
-  ]))
+    nodes: {
+      a: graph(), b: true
+    },
+    links: [
+      [$.a, $.b]
+    ]
+  }))
     .toThrow()
 })
 
 test('subgraphs missing "in" node fails', () => {
   expect(() => graph({
-    a: 43, b: graph()
-  }, [
-    [$.a, $.b]
-  ]))
+    nodes: {
+      a: 43, b: graph()
+    }, links: [
+      [$.a, $.b]
+    ]
+  }))
     .toThrow()
 })
 
 test('subpath into non-graph node fails', () => {
   expect(() => graph({
-    a: 43, b: 23
-  }, [
-    [$.a.b, $.b]
-  ]))
+    nodes: {
+      a: 43, b: 23
+    },
+    links: [
+      [$.a.b, $.b]
+    ]
+  }))
     .toThrow()
 
   expect(() => graph({
-    a: 43, b: 23
-  }, [
-    [$.a, $.b.c]
-  ]))
+    nodes: {
+      a: 43, b: 23
+    }, links: [
+      [$.a, $.b.c]
+    ]
+  }))
     .toThrow()
 })
 
 test('defining subgraphs', () => {
-  expect(graph({
-    a: graph({ out: 42 }), b: true
-  }, [
-    [$.a, $.b]
-  ]))
+  expect(inAndOut(graph({
+    nodes: {
+      a: graph({ nodes: { out: 42 } }), b: true
+    },
+    links: [
+      [$.a, $.b]
+    ]
+  })))
     .toStrictEqual({
-      nodes: {
-        a: { nodes: { out: 42 }, in: {}, out: {} },
-        b: true
-      },
       in: { b: s(['a', 'out']) },
       out: { a: { out: s(['b']) } }
     })
 
-  expect(graph({
-    a: graph({ out: 42 }), b: graph({ in: 56 })
-  }, [
-    [$.a, $.b]
-  ]))
+  expect(inAndOut(graph({
+    nodes: {
+      a: graph({ nodes: { out: 42 } }),
+      b: graph({ nodes: { in: 56 } })
+    },
+    links: [
+      [$.a, $.b]
+    ]
+  }
+  )))
     .toStrictEqual({
-      nodes: {
-        a: { nodes: { out: 42 }, in: {}, out: {} },
-        b: { nodes: { in: 56 }, in: {}, out: {} }
-      },
       in: { b: { in: s(['a', 'out']) } },
       out: { a: { out: s(['b', 'in']) } }
     })
 })
 
 test('walking graphs', () => {
-  const g = graph(
-    {
+  const g = graph({
+    nodes: {
       1: 22,
-      a: graph({ in: 34, out: 42 }, [[$.in, $.out]]),
-      b: graph({ in: 56, out: 78 }, [[$.in, $.out]]),
+      a: graph({ nodes: { in: 34, out: 42 }, links: [[$.in, $.out]] }),
+      b: graph({ nodes: { in: 56, out: 78 }, links: [[$.in, $.out]] }),
       c: 97
     },
-    [
+    links: [
       [$[1], $.c],
       [$.a, $.b],
       [$.a, $.c],
       [$.a.in, $.a.out]
-    ])
+    ]
+  })
 
   expect(walkGraph(g, [$[1], $.a.in], [], (a, v) => [v, ...a]))
     .toStrictEqual([[22, [97]], [34, [42, [56, [78]], [97]]]])
@@ -150,20 +177,21 @@ test('walking graphs', () => {
 
   expect(() =>
     walkGraph(
-      graph(
-        {
+      graph({
+        nodes: {
           1: 22,
-          a: graph({ in: 34, out: 42 }, [[$.in, $.out]]),
-          b: graph({ in: 56, out: 78 }, [[$.in, $.out]]),
+          a: graph({ nodes: { in: 34, out: 42 }, links: [[$.in, $.out]] }),
+          b: graph({ nodes: { in: 56, out: 78 }, links: [[$.in, $.out]] }),
           c: 97
         },
-        [
+        links: [
           [$[1], $.c],
           [$.a, $.b],
           [$.a, $.c],
           [$.a.in, $.a.out],
           [$.b.out, $.a.out]
-        ]),
+        ]
+      }),
       [$[1], $.a],
       [],
       (a, v) => [v, ...a])
@@ -173,14 +201,13 @@ test('walking graphs', () => {
 
 test('printing graphs', () => {
   console.dir = jest.fn()
-  pg(graph({ a: 1, b: 2 }))
+  pg(graph({ nodes: { a: 1, b: 2 } }))
   expect(console.dir).toHaveBeenCalled()
 })
 
 test('chain works', () => {
-  expect(dePathRef(chain(1, 2, 3)))
+  expect(inAndOut(chain(1, 2, 3)))
     .toStrictEqual({
-      nodes: { 0: 1, 1: 2, 2: 3, in: ['0'], out: ['2'] },
       in: { 1: s(['0']), 2: s(['1']) },
       out: { 0: s(['1']), 1: s(['2']) }
     })

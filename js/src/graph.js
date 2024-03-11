@@ -9,7 +9,7 @@ const graphable = Symbol('graph')
 export const isGraphable = (x) => x instanceof Object && graphable in x
 
 const Graph = {
-  [graphable]: function () { return this }
+  [graphable]: function() { return this }
 }
 
 export const getGraph = (x) =>
@@ -115,19 +115,24 @@ const addLink = (g, [src, dst]) => {
   return g
 }
 
-export const graph = (nodes = {}, links = []) =>
+export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
   links.reduce(addLink,
-    derive({ nodes, in: {}, out: {} },
+    derive({ nodes, links, in: {}, out: {} },
       Graph))
 
 // chain: return a graph of values chained together with 'in' and 'out' nodes
 // at the top and bottom. Very similar to `compose`.
 export const chain = (...nodes) =>
   graph({
-    ...nodes,
-    in: $[0],
-    out: $[nodes.length - 1]
-  }, nodes.slice(1).map((_, i) => [$[i], $[i + 1]]))
+    nodes: {
+      ...nodes,
+      in: $[0],
+      out: $[nodes.length - 1]
+    },
+    links: nodes
+      .slice(1)
+      .map((_, i) => [$[i], $[i + 1]])
+  })
 
 // Walking Graphs
 const pushCycleCheck = (cycle, x) => {
@@ -242,13 +247,13 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
         walkFn(
           childPaths.map(path => getIn(walked, path)),
           getNode(g, path), {
-            path,
-            graph: g,
-            root: rootPathsSet.has(path),
-            leaf: leafPathsSet.has(path),
-            parentPaths,
-            childPaths
-          }))
+          path,
+          graph: g,
+          root: rootPathsSet.has(path),
+          leaf: leafPathsSet.has(path),
+          parentPaths,
+          childPaths
+        }))
     }
 
     return walked

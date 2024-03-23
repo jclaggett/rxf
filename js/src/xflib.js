@@ -179,10 +179,16 @@ export const dropWhile = (pred) =>
     })),
     mapcat(a => a.vs))
 
+// interpose: Step with sep between each value.
+export const interpose = (sep) =>
+  compose(
+    mapcat(x => [sep, x]),
+    drop(1))
+
 // prolog & epilog: step an initial value before first step and a final value
 // after last step.
 export const prolog = (x) =>
-  reductions((_, v) => v, x)
+  reductions((_, v) => v, () => x)
 
 export const epilog = (x) =>
   transducer(r => {

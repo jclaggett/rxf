@@ -1,15 +1,21 @@
 import util from 'util'
-import { derive, isEmpty, last } from './util.js'
+import { compose, derive, isEmpty, last, isa, first } from './util.js'
+import * as r from './reducing.js'
+import * as xf from './xflib.js'
 import {
-  $, pathRefToArray, pathRefToString, arrayViaPathRef, isPathRef
+  $, pathRefToArray, pathRefToString, arrayViaPathRef, isPathRef, arrayToPathRef
 } from './pathref.js'
+
+const isObject = isa(Object)
+const isError = isa(Error)
+const isSet = isa(Set)
 
 // Graphable Protocol
 const graphable = Symbol('graph')
-export const isGraphable = (x) => x instanceof Object && graphable in x
+export const isGraphable = (x) => isObject(x) && graphable in x
 
 const Graph = {
-  [graphable]: function() { return this }
+  [graphable]: function () { return this }
 }
 
 export const getGraph = (x) =>
@@ -71,7 +77,7 @@ const addPath = (paths, [name, ...path], targetPath) => {
 }
 
 const isBadPath = (path) =>
-  last(path) instanceof Error
+  isError(last(path))
 
 const normalizePathInner = (nodes, dir, path) => {
   let newPath = getAliasedPath(nodes, path)
@@ -115,10 +121,113 @@ const addLink = (g, [src, dst]) => {
   return g
 }
 
-export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
+export const oldgraph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
   links.reduce(addLink,
     derive({ nodes, links, in: {}, out: {} },
       Graph))
+
+// New plan:
+// 1. normalize each pathref in each link into a path (array) and complain if that path is not pointing to a valid node.
+// 2. reducing over the normalized links, add in and out entries
+// 3. redcuing over all subgraph nodes, merge in and out entries into new graph
+// 4. walk through normalized paths and confirm that no cycles exist
+const normalizeLink = ([srcPathRef, dstPathRef], nodes) => {
+  const srcPath = normalizePath(nodes, 'out', pathRefToArray(srcPathRef))
+  if (isBadPath(srcPath)) {
+    throw new Error(`Invalid source ref: ${pathRefToString(srcPathRef)}`)
+  }
+
+  const dstPath = normalizePath(nodes, 'in', pathRefToArray(dstPathRef))
+  if (isBadPath(dstPath)) {
+    throw new Error(`Invalid destination ref: ${pathRefToString(dstPathRef)}`)
+  }
+  return [srcPath, dstPath]
+}
+
+const addNormalizedLink = (g, [srcPath, dstPath]) => {
+  g.out = addPath(g.out, srcPath, dstPath)
+  g.in = addPath(g.in, dstPath, srcPath)
+  return g
+}
+
+const addElem = (s, e) => {
+  return s.add(e)
+}
+
+const mergeLinks = (dst, src, pathref) =>
+  isSet(src)
+    ? Array.from(src)
+      .map(path => arrayViaPathRef(path, pathref))
+      .reduce(addElem, dst ?? new Set())
+    : Object.entries(src)
+      .reduce((dst, [name, src]) => {
+        dst[name] = mergeLinks(dst[name], src, pathref)
+        return dst
+      }, dst ?? {})
+
+const mergeSubgraph = (g, [name, sg]) => {
+  // 1. merge in's (recursively)
+  const sgin = mergeLinks(g.in[name], sg.in, $[name])
+  if (Object.values(sgin).length > 0) {
+    g.in[name] = sgin
+  }
+
+  // 2. merge out's (recursively)
+  const sgout = mergeLinks(g.out[name], sg.out, $[name])
+  if (Object.values(sgout).length > 0) {
+    g.out[name] = sgout
+  }
+
+  return g
+}
+
+const emptySet = new Set()
+const getSubpaths = (paths, path) =>
+  Array.from(getIn(paths, path) ?? emptySet)
+
+const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = []) => {
+  walkedSet.add(currentPath)
+  walkedArray.push(currentPath)
+  getSubpaths(paths, currentPath)
+    .map(subpath => {
+      if (walkedSet.has(subpath)) {
+        const cycleText = r.transduce(
+          compose(
+            xf.dropWhile(path => path !== subpath),
+            xf.epilog(subpath),
+            xf.map(path => pathRefToString(arrayToPathRef(path))),
+            xf.interpose(' -> ')
+          )(r.sum),
+          '',
+          walkedArray)
+        throw new Error(`Cycle detected when walking graph: ${cycleText}`)
+      }
+      return walkForCycle(paths, subpath, walkedSet, walkedArray)
+    })
+  walkedSet.delete(currentPath)
+  walkedArray.pop()
+  return true
+}
+
+export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) => {
+  let g = derive({ nodes, links, in: {}, out: {} }, Graph)
+
+  const normalizedLinks = links
+    .map(link => normalizeLink(link, nodes))
+
+  g = normalizedLinks
+    .reduce(addNormalizedLink, g)
+
+  g = Object.entries(nodes)
+    .filter(([_, node]) => isGraphable(node))
+    .reduce(mergeSubgraph, g)
+
+  normalizedLinks
+    .map(first)
+    .map(path => walkForCycle(g.out, path))
+
+  return g
+}
 
 // chain: return a graph of values chained together with 'in' and 'out' nodes
 // at the top and bottom. Very similar to `compose`.
@@ -221,7 +330,7 @@ const prewalk = (rootPaths, getChildPaths) => {
  *       were not listed in `leafPaths`)
  *
  */
-export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
+export const oldwalkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
   const rootDir = leafDir === 'out' ? 'in' : 'out'
 
   const rootPaths = rootPathRefs
@@ -238,15 +347,16 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
     rootPaths, (path) => getPaths(g, leafDir, path))
 
   const walkNode = (walked, path) => {
-    if (getIn(walked, path) === undefined) {
-      const parentPaths = Array.from(getIn(allParentPaths, path))
-      const childPaths = Array.from(getIn(allChildPaths, path))
+    const parentPaths = Array.from(getIn(allParentPaths, path))
+    const childPaths = Array.from(getIn(allChildPaths, path))
 
-      walked = childPaths.reduce(walkNode, walked)
-      walked = setIn(walked, path,
-        walkFn(
-          childPaths.map(path => getIn(walked, path)),
-          getNode(g, path), {
+    walked = childPaths
+      .filter(path => getIn(walked, path) === undefined) // unwalked paths
+      .reduce(walkNode, walked)
+    walked = setIn(walked, path,
+      walkFn(
+        childPaths.map(path => getIn(walked, path)),
+        getNode(g, path), {
           path,
           graph: g,
           root: rootPathsSet.has(path),
@@ -254,7 +364,46 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
           parentPaths,
           childPaths
         }))
-    }
+
+    return walked
+  }
+
+  const walked = rootPaths.reduce(walkNode, {})
+  return rootPaths.map(path => getIn(walked, path))
+}
+
+// Assume that a graphs already have all in and out connections defined
+export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
+  const rootDir = leafDir === 'out' ? 'in' : 'out'
+
+  const rootPaths = rootPathRefs
+    .map(pathRefToArray)
+    .map(path => normalizePath(g.nodes, rootDir, path))
+  const leafPaths = leafPathRefs
+    .map(pathRefToArray)
+    .map(path => normalizePath(g.nodes, leafDir, path))
+
+  const rootPathsSet = new Set(rootPaths)
+  const leafPathsSet = new Set(leafPaths)
+
+  const walkNode = (walked, path) => {
+    const parentPaths = getSubpaths(g[rootDir], path)
+    const childPaths = getSubpaths(g[leafDir], path)
+
+    walked = childPaths
+      .filter(path => getIn(walked, path) === undefined) // unwalked paths
+      .reduce(walkNode, walked)
+    walked = setIn(walked, path,
+      walkFn(
+        childPaths.map(path => getIn(walked, path)),
+        getNode(g, path), {
+          path,
+          graph: g,
+          root: rootPathsSet.has(path),
+          leaf: leafPathsSet.has(path),
+          parentPaths,
+          childPaths
+        }))
 
     return walked
   }

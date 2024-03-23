@@ -50,7 +50,7 @@ test('emit works', () => {
 })
 
 test('reductions works', () => {
-  expect(T(reductions((x, y) => x + y, 0), data))
+  expect(T(reductions((x, y) => x + y, () => 0), data))
     .toStrictEqual([0, 1, 3, 6])
 })
 
@@ -159,7 +159,7 @@ test('detag works', () => {
 
 test('multiplex works', () => {
   expect(T(multiplex([]), data))
-    .toStrictEqual(data)
+    .toStrictEqual([])
   expect(T(multiplex([map(x => x + 1)]), data))
     .toStrictEqual([2, 3, 4])
   expect(T(multiplex([map(x => -x), take(2)]), data))

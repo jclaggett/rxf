@@ -3,18 +3,12 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { jest } from '@jest/globals'
-import { $, pathRefToArray } from '../pathref'
+import { $ } from '../pathref'
 import { graph, walkGraph, chain, pg } from '../graph'
 
 const s = (...args) => new Set(args)
 
-const dePathRef = (g) => {
-  g.nodes = Object.fromEntries(
-    Object.entries(g.nodes).map(([k, v]) => [k, pathRefToArray(v)]))
-  return g
-}
-
-const inAndOut = (g) => ({ in: g['in'], out: g['out'] })
+const inAndOut = (g) => ({ in: g.in, out: g.out })
 
 test('defining graphs', () => {
   expect(graph())
@@ -56,14 +50,13 @@ test('defining graphs', () => {
     links: [
       [$.a, $.b],
       [$.a, $.b],
-      [$.in, $.out],
-      [$.b, $.b]
+      [$.in, $.out]
     ]
   })
   expect(inAndOut(g2))
     .toStrictEqual({
-      in: { b: s(['a'], ['b']) },
-      out: { a: s(['b']), b: s(['b']) }
+      in: { b: s(['a']) },
+      out: { a: s(['b']) }
     })
 })
 
@@ -95,7 +88,8 @@ test('subgraphs missing "in" node fails', () => {
   expect(() => graph({
     nodes: {
       a: 43, b: graph()
-    }, links: [
+    },
+    links: [
       [$.a, $.b]
     ]
   }))
@@ -116,8 +110,33 @@ test('subpath into non-graph node fails', () => {
   expect(() => graph({
     nodes: {
       a: 43, b: 23
-    }, links: [
+    },
+    links: [
       [$.a, $.b.c]
+    ]
+  }))
+    .toThrow()
+})
+
+test('cycles in graph to fail', () => {
+  expect(() => graph({
+    nodes: {
+      a: 43, b: 23
+    },
+    links: [
+      [$.a, $.b],
+      [$.b, $.b]
+    ]
+  }))
+    .toThrow()
+
+  expect(() => graph({
+    nodes: {
+      a: 43, b: 23
+    },
+    links: [
+      [$.a, $.b],
+      [$.b, $.a]
     ]
   }))
     .toThrow()
@@ -174,29 +193,6 @@ test('walking graphs', () => {
 
   expect(walkGraph(g, [$.b.out, $.c], [], (a, v) => [v, ...a], 'in'))
     .toStrictEqual([[78, [56, [42, [34]]]], [97, [22], [42, [34]]]])
-
-  expect(() =>
-    walkGraph(
-      graph({
-        nodes: {
-          1: 22,
-          a: graph({ nodes: { in: 34, out: 42 }, links: [[$.in, $.out]] }),
-          b: graph({ nodes: { in: 56, out: 78 }, links: [[$.in, $.out]] }),
-          c: 97
-        },
-        links: [
-          [$[1], $.c],
-          [$.a, $.b],
-          [$.a, $.c],
-          [$.a.in, $.a.out],
-          [$.b.out, $.a.out]
-        ]
-      }),
-      [$[1], $.a],
-      [],
-      (a, v) => [v, ...a])
-  )
-    .toThrow()
 })
 
 test('printing graphs', () => {

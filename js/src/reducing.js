@@ -57,6 +57,12 @@ export const toArray = {
   [RESULT]: (a) => a
 }
 
+export const sum = {
+  [INIT]: () => 0,
+  [STEP]: (a, x) => a + x,
+  [RESULT]: (a) => a
+}
+
 export const count = {
   [INIT]: () => 0,
   [STEP]: (a, _x) => a + 1,

@@ -44,7 +44,12 @@ test('xfgraph works', () => {
     ]
   })
 
-  expect(T(xfgraph(g), [['a', 3], ['b', 2]]))
+  expect(T(
+    xfgraph(g, {
+      rootPathRefs: [$.a, $.b],
+      leafPathRefs: [$.c, $.d]
+    }),
+    [['a', 3], ['b', 2]]))
     .toStrictEqual([['c', 4], ['d', 3], ['d'], ['c']])
 })
 
@@ -59,7 +64,10 @@ test('mapjoin works', () => {
       [$.a, $.c[0]],
       [$.b, $.c[1]]
     ]
-  })), [
+  }), {
+    rootPathRefs: [$.a, $.b],
+    leafPathRefs: [$.c]
+  }), [
     ['a', 3], ['b', 2], ['b', 3], ['b', 4], ['a', 5]
   ]))
     .toStrictEqual([['c', 5], ['c', 9], ['c']])

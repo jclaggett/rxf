@@ -53,15 +53,13 @@ export const composeGraph = (g, { leafFn, leafPathRefs, rootFn, rootPathRefs }) 
  * transducer are variants associated with any of the leaf nodes in the graph
  * (Leaf nodes have no children).
  */
-export const xfgraph = (g) => {
-  const rootPathRefs = Object.keys(g.nodes)
-    .filter(key => !Object.hasOwn(g.in, key))
-    .map(key => $[key])
-
-  const leafPathRefs = Object.keys(g.nodes)
-    .filter(key => !Object.hasOwn(g.out, key))
-    .map(key => $[key])
-
+export const xfgraph = (g, {
+  rootPathRefs = [],
+  leafPathRefs = []
+} = {
+  rootPathRefs: [],
+  leafPathRefs: []
+}) => {
   const xfs = composeGraph(g, {
     leafFn: ([name], _value) => [tag(name)],
     rootFn: ([name], _value) => [detag(name)],
@@ -69,7 +67,6 @@ export const xfgraph = (g) => {
     rootPathRefs
   })
 
-  console.dir({ xfs })
   return multiplex(xfs)
 }
 

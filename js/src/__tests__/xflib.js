@@ -17,11 +17,15 @@ import {
   filter,
   filter2,
   flatMap,
+  forwardErrors,
+  interpose,
+  keep,
   map,
   multiplex,
   partition,
   prolog,
   reductions,
+  remove,
   tag,
   take,
   takeWhile,
@@ -57,6 +61,16 @@ test('reductions works', () => {
 test('filter works', () => {
   expect(T(filter(x => x % 2), data))
     .toStrictEqual([1, 3])
+})
+
+test('keep works', () => {
+  expect(T(keep(x => x % 2), data))
+    .toStrictEqual([1, 3])
+})
+
+test('remove works', () => {
+  expect(T(remove(x => x % 2), data))
+    .toStrictEqual([2])
 })
 
 test('partition works', () => {
@@ -140,6 +154,11 @@ test('dropAll works', () => {
     .toStrictEqual([])
 })
 
+test('interpose works', () => {
+  expect(T(interpose(0), data))
+    .toStrictEqual([1, 0, 2, 0, 3])
+})
+
 test('after works', () => {
   expect(T(after(42), data))
     .toStrictEqual([42])
@@ -173,4 +192,12 @@ test('demultiplex works', () => {
   const tail = compose(demultiplex(2), take(3))
   expect(T(multiplex([tail, tail]), data))
     .toStrictEqual([1, 1, 2])
+})
+
+test('forwardErrors works', () => {
+  expect(T(forwardErrors(map(x => x)), data))
+    .toStrictEqual([1, 2, 3])
+
+  expect(T(forwardErrors(map(x => { throw new Error(x) })), data))
+    .toStrictEqual(data.map(x => new Error(x)))
 })

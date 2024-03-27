@@ -188,11 +188,16 @@ test('walking graphs', () => {
     ]
   })
 
-  expect(walkGraph(g, [$[1], $.a.in], [], (a, v) => [v, ...a]))
+  expect(walkGraph(g, [$[1], $.a.in], [$.c], (a, v) => [v, ...a]))
     .toStrictEqual([[22, [97]], [34, [42, [56, [78]], [97]]]])
 
-  expect(walkGraph(g, [$.b.out, $.c], [], (a, v) => [v, ...a], 'in'))
+  expect(walkGraph(g, [$.b.out, $.c], [$[1]], (a, v) => [v, ...a], 'in'))
     .toStrictEqual([[78, [56, [42, [34]]]], [97, [22], [42, [34]]]])
+
+  expect(() => walkGraph(g, [$.badref], [], (a, v) => [v, ...a]))
+    .toThrow()
+  expect(() => walkGraph(g, [], [$.badref], (a, v) => [v, ...a]))
+    .toThrow()
 })
 
 test('printing graphs', () => {

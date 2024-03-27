@@ -2,7 +2,12 @@
 // 1. Coverage report should be at 100% when testing only this file.
 // 2. Tests should be defined only in terms of the exported API.
 
+import { jest } from '@jest/globals'
 import * as util from '../util'
+
+beforeAll(() => {
+  console.dir = jest.fn()
+})
 
 test('util fns work', () => {
   const data = [1, 2, 3]
@@ -29,4 +34,8 @@ test('util fns work', () => {
     .toStrictEqual(true)
   expect(c(4))
     .toStrictEqual(false)
+  expect(util.isa(Object)({}))
+    .toStrictEqual(true)
+  expect(util.debug(42))
+    .toStrictEqual(42)
 })

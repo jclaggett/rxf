@@ -27,6 +27,9 @@ test('composeGraph works', () => {
 test('empty xfgraph works', () => {
   expect(T(xfgraph(graph()), []))
     .toStrictEqual([])
+
+  expect(T(xfgraph(graph(), {}), []))
+    .toStrictEqual([])
 })
 
 test('xfgraph works', () => {

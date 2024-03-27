@@ -98,8 +98,8 @@ export const findSinks = (nodes) =>
       isSink(node)
         ? [$[name]]
         : (isGraphable(node) && isSink(node.nodes.in))
-          ? [$[name].in]
-          : [])
+            ? [$[name].in]
+            : [])
 
 // Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
 // f(x) is assumed to perform a side effect of some kind.

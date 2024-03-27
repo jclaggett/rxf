@@ -5,10 +5,10 @@
 import {
   INIT, STEP, RESULT, isReduced, unreduced, reduced, transducer,
   transduce, nullReducer, count, toArray, average,
-  ensureReduced, ensureUnreduced
+  ensureReduced, ensureUnreduced, sum, reduce
 } from '../reducing'
 
-test('reducing fns work', () => {
+test('reducing protocol fns work', () => {
   expect(isReduced(42))
     .toStrictEqual(false)
   expect(isReduced(reduced(42)))
@@ -23,6 +23,13 @@ test('reducing fns work', () => {
     .toStrictEqual(false)
   expect(isReduced(ensureUnreduced(unreduced(ensureReduced(reduced(42))))))
     .toStrictEqual(false)
+})
+
+test('reduce fn works', () => {
+  expect(reduce((a, x) => a + x, 0, [1, 2, 3]))
+    .toStrictEqual(6)
+  expect(unreduced(reduce((a, x) => reduced(a + x), 0, [1, 2, 3])))
+    .toStrictEqual(1)
 })
 
 test('transducing fn works', () => {
@@ -61,4 +68,6 @@ test('reducers work', () => {
     .toStrictEqual(3)
   expect(transduce(average, average[INIT](), data))
     .toStrictEqual(2)
+  expect(transduce(sum, sum[INIT](), data))
+    .toStrictEqual(6)
 })

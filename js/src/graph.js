@@ -1,4 +1,3 @@
-import util from 'util'
 import { compose, derive, isEmpty, last, isa, first } from './util.js'
 import * as r from './reducing.js'
 import * as xf from './xflib.js'
@@ -15,7 +14,7 @@ const graphable = Symbol('graph')
 export const isGraphable = (x) => isObject(x) && graphable in x
 
 const Graph = {
-  [graphable]: function() { return this }
+  [graphable]: function () { return this }
 }
 
 export const getGraph = (x) =>
@@ -278,13 +277,13 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
       walkFn(
         childPaths.map(path => getIn(walked, path)),
         getNode(g, path), {
-        path,
-        graph: g,
-        root: rootPathsSet.has(path),
-        leaf: leafPathsSet.has(path),
-        parentPaths,
-        childPaths
-      }))
+          path,
+          graph: g,
+          root: rootPathsSet.has(path),
+          leaf: leafPathsSet.has(path),
+          parentPaths,
+          childPaths
+        }))
 
     return walked
   }

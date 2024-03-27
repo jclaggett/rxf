@@ -6,7 +6,7 @@ import { jest } from '@jest/globals'
 import { flatMap, map, take, emit } from '../xflib'
 import { $ } from '../pathref'
 import { graph } from '../graph'
-import { run, source, sink } from '../runner'
+import { run, source, sink, iograph } from '../runner'
 
 beforeAll(() => {
   console.debug = jest.fn()
@@ -25,20 +25,23 @@ test('run works', async () => {
     .toStrictEqual(undefined)
 
   let result = []
-  expect(await run(graph({
-    a: source('init'),
-    b: map(x => x.argv[0]),
-    c: map(x => x.env.USER),
-    d: sink('call', (x) => result.push(x))
-  }, [
-    [$.a, $.b], [$.a, $.c], [$.b, $.d], [$.c, $.d]
-  ]), { initValue: { ...process, argv: ['hello'] } }))
+  expect(await run(iograph({
+    nodes: {
+      a: source('init'),
+      b: map(x => x.argv[0]),
+      c: map(x => x.env.USER),
+      d: sink('call', (x) => result.push(x))
+    },
+    links: [
+      [$.a, $.b], [$.a, $.c], [$.b, $.d], [$.c, $.d]
+    ]
+  }), { initValue: { ...process, argv: ['hello'] } }))
     .toStrictEqual(undefined)
   expect(result)
     .toStrictEqual(['hello', process.env.USER])
 
   result = []
-  expect(await run(graph({
+  expect(await run(iograph({
     a: source('init'),
     b: take(0),
     c: sink('call', (x) => result.push(x))

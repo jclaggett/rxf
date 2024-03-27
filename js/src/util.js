@@ -20,3 +20,8 @@ export const contains = (...xs) => {
 }
 
 export const isa = (y) => (x) => (x instanceof y)
+
+export const debug = (x) => {
+  console.dir([typeof x, x], { colors: true, depth: 5 })
+  return x
+}

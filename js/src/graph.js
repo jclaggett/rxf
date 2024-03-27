@@ -15,7 +15,7 @@ const graphable = Symbol('graph')
 export const isGraphable = (x) => isObject(x) && graphable in x
 
 const Graph = {
-  [graphable]: function () { return this }
+  [graphable]: function() { return this }
 }
 
 export const getGraph = (x) =>
@@ -103,28 +103,6 @@ const normalizePath = (nodes, dir, path) => {
   path = normalizePathInner(nodes, dir, path)
   return isBadPath(path) ? path : arrayViaPathRef(path)
 }
-
-const addLink = (g, [src, dst]) => {
-  const srcPath = normalizePath(g.nodes, 'out', pathRefToArray(src))
-  if (isBadPath(srcPath)) {
-    throw new Error(`Invalid source ref: ${pathRefToString(src)}`)
-  }
-
-  const dstPath = normalizePath(g.nodes, 'in', pathRefToArray(dst))
-  if (isBadPath(dstPath)) {
-    throw new Error(`Invalid destination ref: ${pathRefToString(dst)}`)
-  }
-
-  g.out = addPath(g.out, srcPath, dstPath)
-  g.in = addPath(g.in, dstPath, srcPath)
-
-  return g
-}
-
-export const oldgraph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
-  links.reduce(addLink,
-    derive({ nodes, links, in: {}, out: {} },
-      Graph))
 
 // New plan:
 // 1. normalize each pathref in each link into a path (array) and complain if that path is not pointing to a valid node.
@@ -243,71 +221,6 @@ export const chain = (...nodes) =>
       .map((_, i) => [$[i], $[i + 1]])
   })
 
-// Walking Graphs
-const pushCycleCheck = (cycle, x) => {
-  if (cycle.set.has(x)) {
-    const cycleIndex = cycle.stack.findIndex(y => x === y)
-    const nodeStr = util.inspect(cycle.stack
-      .slice(cycleIndex)
-      .map(x => ['$', ...x].join('.')))
-    throw new Error(`Cycle detected when walking graph: ${nodeStr}`)
-  }
-
-  cycle.set.add(x)
-  cycle.stack.push(x)
-  return cycle
-}
-
-const popCycleCheck = (cycle) => {
-  cycle.set.delete(
-    cycle.stack.pop())
-  return cycle
-}
-
-const getPaths = (g, dir, path) => {
-  const [name, ...subpath] = path
-  const paths = getIn(g[dir], path) ?? new Set()
-  const subpaths = isGraphable(g.nodes[name])
-    ? getPaths(getGraph(g.nodes[name]), dir, subpath)
-    : []
-
-  return [...paths, ...subpaths.map(path => [name, ...path])]
-}
-
-/**
- * prewalk a graph to calculate all parent and child connections for each node
- * in the graph. This includes nodes found in subgraphs and so simplifies the
- * actual walk.
- */
-const prewalk = (rootPaths, getChildPaths) => {
-  const prewalkNode = (result, [path, parentPath]) => {
-    const childPaths = new Set(getChildPaths(path).map(path => arrayViaPathRef(path)))
-
-    result.allParentPaths = updateIn(result.allParentPaths, path,
-      x => x == null
-        ? new Set(parentPath == null ? [] : [parentPath])
-        : x.add(parentPath))
-    result.allChildPaths = setIn(result.allChildPaths, path, childPaths)
-
-    result.cycle = pushCycleCheck(result.cycle, path)
-    result = Array.from(childPaths)
-      .map(childPath => [childPath, path])
-      .reduce(prewalkNode, result)
-    result.cycle = popCycleCheck(result.cycle)
-
-    return result
-  }
-
-  return rootPaths
-    .map(path => [path])
-    .reduce(prewalkNode, {
-      cycle: {
-        stack: [],
-        set: new Set()
-      }
-    })
-}
-
 /**
  * Walk a directed graph `g` starting with the nodes described by `rootPaths`
  * performing a depth first postwalk using `leafDir` to find all connected
@@ -330,58 +243,26 @@ const prewalk = (rootPaths, getChildPaths) => {
  *       were not listed in `leafPaths`)
  *
  */
-export const oldwalkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
-  const rootDir = leafDir === 'out' ? 'in' : 'out'
-
-  const rootPaths = rootPathRefs
-    .map(pathRefToArray)
-    .map(path => normalizePath(g.nodes, rootDir, path))
-  const leafPaths = leafPathRefs
-    .map(pathRefToArray)
-    .map(path => normalizePath(g.nodes, leafDir, path))
-
-  const rootPathsSet = new Set(rootPaths)
-  const leafPathsSet = new Set(leafPaths)
-
-  const { allParentPaths, allChildPaths } = prewalk(
-    rootPaths, (path) => getPaths(g, leafDir, path))
-
-  const walkNode = (walked, path) => {
-    const parentPaths = Array.from(getIn(allParentPaths, path))
-    const childPaths = Array.from(getIn(allChildPaths, path))
-
-    walked = childPaths
-      .filter(path => getIn(walked, path) === undefined) // unwalked paths
-      .reduce(walkNode, walked)
-    walked = setIn(walked, path,
-      walkFn(
-        childPaths.map(path => getIn(walked, path)),
-        getNode(g, path), {
-          path,
-          graph: g,
-          root: rootPathsSet.has(path),
-          leaf: leafPathsSet.has(path),
-          parentPaths,
-          childPaths
-        }))
-
-    return walked
-  }
-
-  const walked = rootPaths.reduce(walkNode, {})
-  return rootPaths.map(path => getIn(walked, path))
-}
-
-// Assume that a graphs already have all in and out connections defined
 export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
   const rootDir = leafDir === 'out' ? 'in' : 'out'
 
   const rootPaths = rootPathRefs
-    .map(pathRefToArray)
-    .map(path => normalizePath(g.nodes, rootDir, path))
+    .map(pathRef => {
+      const path = normalizePath(g.nodes, rootDir, pathRefToArray(pathRef))
+      if (isBadPath(path)) {
+        throw new Error(`Invalid rootPathRef: ${pathRefToString(pathRef)}`)
+      }
+      return path
+    })
+
   const leafPaths = leafPathRefs
-    .map(pathRefToArray)
-    .map(path => normalizePath(g.nodes, leafDir, path))
+    .map(pathRef => {
+      const path = normalizePath(g.nodes, leafDir, pathRefToArray(pathRef))
+      if (isBadPath(path)) {
+        throw new Error(`Invalid leafPathRef: ${pathRefToString(pathRef)}`)
+      }
+      return path
+    })
 
   const rootPathsSet = new Set(rootPaths)
   const leafPathsSet = new Set(leafPaths)
@@ -397,13 +278,13 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
       walkFn(
         childPaths.map(path => getIn(walked, path)),
         getNode(g, path), {
-          path,
-          graph: g,
-          root: rootPathsSet.has(path),
-          leaf: leafPathsSet.has(path),
-          parentPaths,
-          childPaths
-        }))
+        path,
+        graph: g,
+        root: rootPathsSet.has(path),
+        leaf: leafPathsSet.has(path),
+        parentPaths,
+        childPaths
+      }))
 
     return walked
   }

@@ -6,16 +6,19 @@ import { opendir } from 'fs/promises'
 import * as r from './reducing.js'
 import { $ } from './pathref.js'
 import { composeGraph } from './xfgraph.js'
-import { derive, first, isa, identity } from './util.js'
-import { forwardErrors, remove, keep, isXf } from './xflib.js'
+import { derive, first, isa } from './util.js'
+import { forwardErrors, remove, keep, isXf, dropAll } from './xflib.js'
 import { graph, chain, isGraphable } from './graph.js'
 
 const isArray = isa(Array)
 export const isEdge = (x) =>
-  isArray(x) &&
-  (first(x) === 'source' ||
-    first(x) === 'sink' ||
-    first(x) === 'edge')
+  isArray(x) && first(x) === 'edge'
+
+export const isSource = (x) =>
+  isArray(x) && first(x) === 'source'
+
+export const isSink = (x) =>
+  isArray(x) && first(x) === 'sink'
 
 const makeIOSubgraph = (inputNodes) =>
   graph({
@@ -36,10 +39,15 @@ const makeErrorGraph = (xf) =>
     all: $.in
   })
 
-const makeEdgeGraph = (edge) =>
+const makeEdgeGraph = ([_, ...args]) =>
   makeIOSubgraph({
-    in: identity, // TODO: send inputs to all asynchronously
-    all: edge
+    in: ['sink', ...args], // TODO: send inputs to all asynchronously
+    all: ['source', ...args]
+  })
+
+const makeSourceGraph = ([_, ...args]) =>
+  makeIOSubgraph({
+    all: ['source', ...args]
   })
 
 const augmentNode = (node) =>
@@ -47,7 +55,9 @@ const augmentNode = (node) =>
     ? makeErrorGraph(node)
     : isEdge(node)
       ? makeEdgeGraph(node)
-      : node
+      : isSource(node)
+        ? makeSourceGraph(node)
+        : node
 
 const augmentNodes = (nodes) =>
   Object.fromEntries(
@@ -75,52 +85,99 @@ export const iochain = (...nodes) =>
  * Return an array of all 'edge' nodes defined in `g` which is assumed to be a
  * directed graph defined by `graph2`.
  */
-export const findEdges = (g) =>
-  Object.entries(g.nodes)
-    .filter(([_, node]) => isGraphable(node) && isEdge(node.nodes.all))
-    .map(first)
+export const findSources = (nodes) =>
+  Object.entries(nodes)
+    .flatMap(([name, node]) =>
+      (isGraphable(node) && isSource(node.nodes.all))
+        ? [$[name].all]
+        : [])
+
+export const findSinks = (nodes) =>
+  Object.entries(nodes)
+    .flatMap(([name, node]) =>
+      isSink(node)
+        ? [$[name]]
+        : (isGraphable(node) && isSink(node.nodes.in))
+          ? [$[name].in]
+          : [])
+
+// Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
+// f(x) is assumed to perform a side effect of some kind.
+const callSink = (f) =>
+  r.transducer(_ => ({
+    [r.STEP]: (a, x) => {
+      f(x)
+      return a
+    }
+  }))
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-export const sources = {
-  init: () =>
-    r.transducer(rf => ({
-      [r.STEP]: async (a, x) => rf[r.STEP](a, x)
-    })),
+export const edges = {
 
-  timer: (ms) =>
-    r.transducer(rf => {
-      return {
+  init: {
+    source: () =>
+      r.transducer(rf => ({
+        [r.STEP]: async (a, x) => rf[r.STEP](a, x)
+      })),
+    sink: () => dropAll
+  },
+
+  debug: {
+    source: () => dropAll,
+    sink: () => callSink(console.debug)
+  },
+
+  log: {
+    source: () => dropAll,
+    sink: () => callSink(x => console.log(x))
+  },
+
+  call: {
+    source: () => dropAll,
+    sink: callSink
+  },
+
+  timer: {
+    source: (ms) =>
+      r.transducer(rf => {
+        return {
+          [r.STEP]: async (a, _x) => {
+            let then = Date.now()
+            while (!r.isReduced(a)) {
+              await sleep(ms - (Date.now() - then))
+              then = Date.now()
+              a = rf[r.STEP](a, then)
+              then += 1
+            }
+            return a
+          }
+        }
+      }),
+
+    sink: () => dropAll
+  },
+
+  dir: {
+    source: (path) =>
+      r.transducer(rf => ({
         [r.STEP]: async (a, _x) => {
-          let then = Date.now()
-          while (!r.isReduced(a)) {
-            await sleep(ms - (Date.now() - then))
-            then = Date.now()
-            a = rf[r.STEP](a, then)
-            then += 1
+          const dir = await opendir(path)
+          for await (const dirent of dir) {
+            a = rf[r.STEP](a, dirent)
+            if (r.isReduced(a)) {
+              break
+            }
           }
           return a
         }
-      }
-    }),
-
-  dir: (path) =>
-    r.transducer(rf => ({
-      [r.STEP]: async (a, _x) => {
-        const dir = await opendir(path)
-        for await (const dirent of dir) {
-          a = rf[r.STEP](a, dirent)
-          if (r.isReduced(a)) {
-            break
-          }
-        }
-        return a
-      }
-    }))
+      })),
+    sink: () => dropAll
+  }
 }
 
-const pipeSourceConstructor = (pipes) =>
-  (name) =>
+const pipeEdgeConstructor = (pipes) => ({
+  source: (name) =>
     r.transducer(rf => {
       return {
         [r.STEP]: async (a, _x) => {
@@ -139,44 +196,33 @@ const pipeSourceConstructor = (pipes) =>
           return a
         }
       }
-    })
-
-// Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
-// f(x) is assumed to perform a side effect of some kind.
-const callSink = (f) =>
-  r.transducer(_ => ({
-    [r.STEP]: (a, x) => {
-      f(x)
-      return a
-    }
-  }))
-
-const pipeSinkConstructor = (pipes) =>
-  (name) =>
+    }),
+  sink: (name) =>
     callSink((x) =>
       setImmediate(() => {
         if (pipes[name] != null) {
           pipes[name].send(x)
         }
       }))
+})
 
-const runSinkConstructor = (childPromises, context) =>
-  () =>
+// TODO erm, run the graph in the source section so that we can await the
+// graph's completion and send a return value of some kind? Also, rungGraph
+// errors maybe?
+const runEdgeConstructor = (childPromises, context) => ({
+  source: () =>
+    dropAll,
+  sink: () =>
     callSink((x) => childPromises.push(
       runGraph(x, context)))
+})
 
-export const sinks = {
-  debug: () => callSink(console.debug),
-  log: () => callSink(console.log),
-  call: callSink
-}
-
-const makeEdgeFn = (edgeType, edges) =>
+const makeEdgeFn = (edges) =>
   (_path, value) => {
-    if (Array.isArray(value)) {
-      const [et, name, ...args] = value
-      return ((et === edgeType) && (edges[name] != null))
-        ? [edges[name](...args)]
+    if (isArray(value)) {
+      const [type, name, ...args] = value
+      return edges[name][type] != null
+        ? [edges[name][type](...args)]
         : []
     } else {
       return []
@@ -186,26 +232,18 @@ const makeEdgeFn = (edgeType, edges) =>
 const runGraph = async (g, context) => {
   const childPromises = []
   const pipes = derive({}, context.pipes)
-  const sources = derive({
-    pipe: pipeSourceConstructor(pipes)
-  }, context.sources)
-
-  const sinks = derive({
-    run: runSinkConstructor(childPromises, derive({ pipes }, context)),
-    pipe: pipeSinkConstructor(pipes)
-  }, context.sinks)
-
-  const edges = findEdges(g)
-  const rootPathRefs = edges.map(edge => $[edge].all)
-  const leafPathRefs = edges.map(edge => $[edge].in)
+  const edges = derive({
+    pipe: pipeEdgeConstructor(pipes),
+    run: runEdgeConstructor(childPromises, derive({ pipes }, context))
+  }, context.edges)
+  const edgeFn = makeEdgeFn(edges)
 
   const xfs = composeGraph(g, {
-    leafFn: makeEdgeFn('sink', sinks),
-    rootFn: makeEdgeFn('source', sources),
-    leafPathRefs,
-    rootPathRefs
+    rootFn: edgeFn,
+    leafFn: edgeFn,
+    rootPathRefs: findSources(g.nodes),
+    leafPathRefs: findSinks(g.nodes)
   })
-
   const rf = r.nullReducer
   const a = rf[r.INIT]()
   const rfs = xfs.map(xf => xf(rf))
@@ -220,14 +258,14 @@ const runGraph = async (g, context) => {
 
 const rootContext = {
   initValue: process,
-  sources,
-  sinks,
+  edges,
   pipes: {}
 }
 
 export const run = (g, context = {}) =>
   runGraph(g, derive(context, rootContext))
 
-// define sources and sinks
+// define edges, sources and sinks
+export const edge = (...value) => ['edge', ...value]
 export const source = (...value) => ['source', ...value]
 export const sink = (...value) => ['sink', ...value]

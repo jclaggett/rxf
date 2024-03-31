@@ -7,7 +7,7 @@ import * as r from './reducing.js'
 import { $ } from './pathref.js'
 import { composeGraph } from './xfgraph.js'
 import { derive, first, isa } from './util.js'
-import { forwardErrors, remove, keep, isXf, dropAll } from './xflib.js'
+import { forwardErrors, remove, keep, isXf } from './xflib.js'
 import { graph, chain, isGraphable } from './graph.js'
 
 const isArray = isa(Array)
@@ -79,7 +79,7 @@ export const iograph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =
  * Define an iograph as a chain of nodes
  */
 export const iochain = (...nodes) =>
-  chain(...augmentNodes(nodes))
+  chain(...nodes.map(augmentNode))
 
 /**
  * Return an array of all 'edge' nodes defined in `g` which is assumed to be a
@@ -119,22 +119,18 @@ export const edges = {
     source: () =>
       r.transducer(rf => ({
         [r.STEP]: async (a, x) => rf[r.STEP](a, x)
-      })),
-    sink: () => dropAll
+      }))
   },
 
   debug: {
-    source: () => dropAll,
     sink: () => callSink(console.debug)
   },
 
   log: {
-    source: () => dropAll,
     sink: () => callSink(x => console.log(x))
   },
 
   call: {
-    source: () => dropAll,
     sink: callSink
   },
 
@@ -153,9 +149,7 @@ export const edges = {
             return a
           }
         }
-      }),
-
-    sink: () => dropAll
+      })
   },
 
   dir: {
@@ -171,8 +165,7 @@ export const edges = {
           }
           return a
         }
-      })),
-    sink: () => dropAll
+      }))
   }
 }
 
@@ -210,8 +203,6 @@ const pipeEdgeConstructor = (pipes) => ({
 // graph's completion and send a return value of some kind? Also, rungGraph
 // errors maybe?
 const runEdgeConstructor = (childPromises, context) => ({
-  source: () =>
-    dropAll,
   sink: () =>
     callSink((x) => childPromises.push(
       runGraph(x, context)))
@@ -219,14 +210,11 @@ const runEdgeConstructor = (childPromises, context) => ({
 
 const makeEdgeFn = (edges) =>
   (_path, value) => {
-    if (isArray(value)) {
-      const [type, name, ...args] = value
-      return edges[name][type] != null
-        ? [edges[name][type](...args)]
-        : []
-    } else {
-      return []
-    }
+    const [type, name, ...args] = value
+    const edge = edges[name]
+    return edge != null && edge[type] != null
+      ? [edge[type](...args)]
+      : []
   }
 
 const runGraph = async (g, context) => {

@@ -61,17 +61,22 @@ test('mapjoin works', () => {
     nodes: {
       a: identity,
       b: identity,
-      c: mapjoin((x, y) => x + y, [true, false])
+      c: identity,
+      d: mapjoin(
+        (x, y, z) => x + y + z,
+        [{ active: true }, { active: false }, { transient: true }])
     },
     links: [
-      [$.a, $.c[0]],
-      [$.b, $.c[1]]
+      [$.a, $.d[0]],
+      [$.b, $.d[1]],
+      [$.c, $.d[2]]
     ]
   }), {
-    rootPathRefs: [$.a, $.b],
-    leafPathRefs: [$.c]
+    rootPathRefs: [$.a, $.b, $.c],
+    leafPathRefs: [$.d]
   }), [
-    ['a', 3], ['b', 2], ['b', 3], ['b', 4], ['a', 5]
+    ['a', 3], ['b', 2], ['c', 4],
+    ['b', 3], ['b', 4], ['a', 5], ['c', 6]
   ]))
-    .toStrictEqual([['c', 5], ['c', 9], ['c']])
+    .toStrictEqual([['d', 9], ['d', 15], ['d']])
 })

@@ -75,15 +75,16 @@ export const xfgraph = (g, {
  * describes which inputs generate new calls to `f` when new values are
  * received.
  */
-export const mapjoin = (f, actives) => {
+export const mapjoin = (f, argSpecs) => {
   const joiner = transducer(r => {
-    const joined = new Array(actives.length)
-    const needed = new Set(actives.keys())
+    const joined = new Array(argSpecs.length)
+    const needed = new Set(argSpecs.keys())
+    const transients = argSpecs.flatMap(({ transient }, i) => transient ? [i] : [])
     return {
       [STEP]: (a, [i, v]) => {
         joined[i] = v
 
-        let active = actives[i]
+        let active = argSpecs[i].active
         if (needed.has(i)) {
           needed.delete(i)
           active = true // always active when receiving first needed value
@@ -91,6 +92,7 @@ export const mapjoin = (f, actives) => {
 
         if (active && needed.size === 0) {
           a = r[STEP](a, f(...joined))
+          transients.map(i => needed.add(i))
         }
         return a
       }
@@ -99,9 +101,9 @@ export const mapjoin = (f, actives) => {
 
   return graph({
     nodes: {
-      ...actives.map((_, i) => map(x => [i, x])),
+      ...argSpecs.map((_, i) => map(x => [i, x])),
       out: joiner
     },
-    links: actives.map((_, i) => [$[i], $.out])
+    links: argSpecs.map((_, i) => [$[i], $.out])
   })
 }

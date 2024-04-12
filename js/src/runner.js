@@ -3,103 +3,9 @@
 // sources into sinks via a given graph.
 import { opendir } from 'fs/promises'
 
+import { composeIOGraph } from './iograph.js'
 import * as r from './reducing.js'
-import { $ } from './pathref.js'
-import { composeGraph } from './xfgraph.js'
-import { derive, first, isa } from './util.js'
-import { forwardErrors, remove, keep, isXf } from './xflib.js'
-import { graph, chain, isGraphable } from './graph.js'
-
-const isArray = isa(Array)
-export const isEdge = (x) =>
-  isArray(x) && first(x) === 'edge'
-
-export const isSource = (x) =>
-  isArray(x) && first(x) === 'source'
-
-export const isSink = (x) =>
-  isArray(x) && first(x) === 'sink'
-
-const makeIOSubgraph = (inputNodes) =>
-  graph({
-    nodes: {
-      ...inputNodes,
-      out: remove(isa(Error)),
-      err: keep(isa(Error))
-    },
-    links: [
-      [$.all, $.out],
-      [$.all, $.err]
-    ]
-  })
-
-const makeErrorGraph = (xf) =>
-  makeIOSubgraph({
-    in: forwardErrors(xf),
-    all: $.in
-  })
-
-const makeEdgeGraph = ([_, ...args]) =>
-  makeIOSubgraph({
-    in: ['sink', ...args], // TODO: send inputs to all asynchronously
-    all: ['source', ...args]
-  })
-
-const makeSourceGraph = ([_, ...args]) =>
-  makeIOSubgraph({
-    all: ['source', ...args]
-  })
-
-const augmentNode = (node) =>
-  isXf(node)
-    ? makeErrorGraph(node)
-    : isEdge(node)
-      ? makeEdgeGraph(node)
-      : isSource(node)
-        ? makeSourceGraph(node)
-        : node
-
-const augmentNodes = (nodes) =>
-  Object.fromEntries(
-    Object.entries(nodes)
-      .map(([key, node]) => [key, augmentNode(node)]))
-
-/**
- * Take a graph spec `g` and tranform/normalize the nodes as appropriate.
- * Currently, augmentNodes converts transducer and edge nodes into subgraphs
- * that capture errors and forward them as appropriate.
- */
-export const iograph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) =>
-  graph({
-    nodes: augmentNodes(nodes),
-    links
-  })
-
-/**
- * Define an iograph as a chain of nodes
- */
-export const iochain = (...nodes) =>
-  chain(...nodes.map(augmentNode))
-
-/**
- * Return an array of all 'edge' nodes defined in `g` which is assumed to be a
- * directed graph defined by `graph2`.
- */
-export const findSources = (nodes) =>
-  Object.entries(nodes)
-    .flatMap(([name, node]) =>
-      (isGraphable(node) && isSource(node.nodes.all))
-        ? [$[name].all]
-        : [])
-
-export const findSinks = (nodes) =>
-  Object.entries(nodes)
-    .flatMap(([name, node]) =>
-      isSink(node)
-        ? [$[name]]
-        : (isGraphable(node) && isSink(node.nodes.in))
-            ? [$[name].in]
-            : [])
+import { derive } from './util.js'
 
 // Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
 // f(x) is assumed to perform a side effect of some kind.
@@ -225,13 +131,7 @@ const runGraph = async (g, context) => {
     run: runEdgeConstructor(childPromises, derive({ pipes }, context))
   }, context.edges)
   const edgeFn = makeEdgeFn(edges)
-
-  const xfs = composeGraph(g, {
-    rootFn: edgeFn,
-    leafFn: edgeFn,
-    rootPathRefs: findSources(g.nodes),
-    leafPathRefs: findSinks(g.nodes)
-  })
+  const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })
   const rf = r.nullReducer
   const a = rf[r.INIT]()
   const rfs = xfs.map(xf => xf(rf))
@@ -252,8 +152,3 @@ const rootContext = {
 
 export const run = (g, context = {}) =>
   runGraph(g, derive(context, rootContext))
-
-// define edges, sources and sinks
-export const edge = (...value) => ['edge', ...value]
-export const source = (...value) => ['source', ...value]
-export const sink = (...value) => ['sink', ...value]

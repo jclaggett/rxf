@@ -36,7 +36,7 @@ export const reduce = (f, a, vs) => {
   return a
 }
 
-// Like reduce but with a transducer instead of an f
+// Like reduce but with a reducer instead of a reducing function
 export const transduce = (r, a, vs) =>
   r[RESULT](ensureUnreduced(reduce(r[STEP], a, vs)))
 

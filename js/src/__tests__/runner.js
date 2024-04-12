@@ -5,7 +5,8 @@
 import { jest } from '@jest/globals'
 import { flatMap, map, take, emit } from '../xflib'
 import { $ } from '../pathref'
-import { run, edge, source, sink, iograph, iochain } from '../runner'
+import { edge, source, sink, iograph, iochain } from '../iograph.js'
+import { run } from '../runner.js'
 
 beforeAll(() => {
   console.debug = jest.fn()

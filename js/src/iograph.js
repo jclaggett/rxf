@@ -95,8 +95,8 @@ const findSinks = (nodes) =>
       isSink(node)
         ? [$[name]]
         : (isGraphable(node) && isSink(node.nodes.in))
-          ? [$[name].in]
-          : [])
+            ? [$[name].in]
+            : [])
 
 /**
  * Compose an iograph (i.e., a graph defined by iograph or iochain) of

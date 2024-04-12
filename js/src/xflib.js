@@ -223,8 +223,6 @@ export const detag = (k) =>
     map(second))
 
 // multiplex & demultiplex tranducers
-// NOTE: these are both 'higher order' transducers and so ezducer is not
-// sufficient. Instead, these are written using the underlying transducer fn.
 // NOTE: demultiplex assumes that the standard reducing protocol is broken! It
 // assumes that, instead of only one parent transducer, it may have multiple
 // (n) parent transducers. This means it will accept [STEP] calls even after a

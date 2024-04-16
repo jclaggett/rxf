@@ -19,6 +19,9 @@ export const isReduced = (x) => x instanceof Object && x[REDUCED] === true
 export const ensureReduced = (x) => isReduced(x) ? x : reduced(x)
 export const ensureUnreduced = (x) => isReduced(x) ? unreduced(x) : x
 
+// Builder for transducers. Takes a constructor function which implements the
+// transducer (taking and returing a reducer). The returned reducer then
+// inherits from the given reducer (using prototype inheritance).
 export const transducer = (constructor) =>
   (reducer) => {
     const reducer2 = constructor(reducer)

@@ -7,7 +7,7 @@ import { compose } from '../util'
 import {
   after,
   dedupe,
-  demultiplex,
+  merge,
   detag,
   drop,
   dropAll,
@@ -21,7 +21,7 @@ import {
   interpose,
   keep,
   map,
-  multiplex,
+  spread,
   partition,
   prolog,
   reductions,
@@ -176,21 +176,21 @@ test('detag works', () => {
     .toStrictEqual([1, 2, 3])
 })
 
-test('multiplex works', () => {
-  expect(T(multiplex([]), data))
+test('spread works', () => {
+  expect(T(spread([]), data))
     .toStrictEqual([])
-  expect(T(multiplex([map(x => x + 1)]), data))
+  expect(T(spread([map(x => x + 1)]), data))
     .toStrictEqual([2, 3, 4])
-  expect(T(multiplex([map(x => -x), take(2)]), data))
+  expect(T(spread([map(x => -x), take(2)]), data))
     .toStrictEqual([-1, 1, -2, 2, -3])
 })
 
-test('demultiplex works', () => {
-  expect(T(compose(demultiplex(1), map(x => x + 1)), data))
+test('merge works', () => {
+  expect(T(compose(merge(1), map(x => x + 1)), data))
     .toStrictEqual([2, 3, 4])
 
-  const tail = compose(demultiplex(2), take(3))
-  expect(T(multiplex([tail, tail]), data))
+  const tail = compose(merge(2), take(3))
+  expect(T(spread([tail, tail]), data))
     .toStrictEqual([1, 1, 2])
 })
 

@@ -222,24 +222,24 @@ export const detag = (k) =>
     takeWhile(x => x.length === 2),
     map(second))
 
-// multiplex & demultiplex tranducers
-// NOTE: demultiplex assumes that the standard reducing protocol is broken! It
+// spread & merge tranducers
+// NOTE: merge assumes that the standard reducing protocol is broken! It
 // assumes that, instead of only one parent transducer, it may have multiple
 // (n) parent transducers. This means it will accept [STEP] calls even after a
 // reduced() value is returned and it expects to receive multiple (n) [RESULT]
 // calls.
-export const multiplex = (xfs) =>
-  // There are 4 layers of reducers in multiplex:
+export const spread = (xfs) =>
+  // There are 4 layers of reducers in spread:
   // r1: the given, next reducer in the chain
-  // r2: a demultiplex reducer over r1
-  // rs: the muliplexed reducers all sharing r2
+  // r2: a merge reducer over r1
+  // rs: the spread reducers all sharing r2
   // returned reducer: applies all rs reducers
   (xfs.length === 0)
-    ? dropAll // trivial case: zero transducers to multiplex
+    ? dropAll // trivial case: zero transducers to spread
     : (xfs.length === 1)
-        ? xfs[0] // trivial case: no need to multiplex one transducer
+        ? xfs[0] // trivial case: no need to spread to only one transducer
         : transducer(r1 => {
-          const r2 = demultiplex(xfs.length)(r1)
+          const r2 = merge(xfs.length)(r1)
           let rs = xfs.map(xf => xf(r2))
           return {
             [STEP]: (a, v) => {
@@ -265,7 +265,7 @@ export const multiplex = (xfs) =>
           }
         })
 
-export const demultiplex = (n) => {
+export const merge = (n) => {
   if (n < 2) {
     return takeAll // trivial case
   } else {

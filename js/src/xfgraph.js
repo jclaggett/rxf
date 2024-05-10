@@ -3,13 +3,13 @@
 // as identity (i.e., a trivial transducer).
 
 import { transducer, STEP } from './reducing.js'
-import { map, tag, detag, multiplex, demultiplex } from './xflib.js'
+import { map, tag, detag, spread, merge, takeAll } from './xflib.js'
 import { $ } from './pathref.js'
 import { graph, walkGraph } from './graph.js'
 import { identity, compose } from './util.js'
 
 /**
- * Walk a graph of transducers using `multiplex` and `demultiplex` to combine
+ * Walk a graph of transducers using `spread` and `merge` to combine
  * idividual transducers into a 'reduced' set of transducers. Use `leafFn` to
  * provide zero or more sink transducers (i.e., causes side effects.). Use
  * `rootFn` to provide zero or more source transducers (i.e., responds to side
@@ -26,19 +26,19 @@ export const composeGraph = (g, { leafFn, leafPathRefs, rootFn, rootPathRefs }) 
         xfs = xfs.flatMap(identity)
       }
 
-      // Stage 2: multiplex
+      // Stage 2: spread
       if ((typeof node === 'function') && (node !== identity) && (xfs.length > 0)) {
-        xfs = [compose(node, multiplex(xfs))]
+        xfs = [compose(node, spread(xfs))]
       }
 
-      // Stage 3: demultiplex
+      // Stage 3: merge
       if (parentPaths.length > 1) {
-        xfs = xfs.map(xf => compose(demultiplex(parentPaths.length), xf))
+        xfs = xfs.map(xf => compose(merge(parentPaths.length), xf))
       }
 
       // Stage 4: root nodes
       if (root && xfs.length > 0) {
-        const leafXf = multiplex(xfs)
+        const leafXf = spread(xfs)
         xfs = rootFn(path, node).map(rootXf => compose(rootXf, leafXf))
       }
 
@@ -67,7 +67,7 @@ export const xfgraph = (g, {
     rootPathRefs
   })
 
-  return multiplex(xfs)
+  return spread(xfs)
 }
 
 /**

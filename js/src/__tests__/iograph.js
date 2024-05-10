@@ -3,7 +3,7 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { identity } from '../util.js'
-import { multiplex, tag, detag } from '../xflib.js'
+import { spread, tag, detag } from '../xflib.js'
 import { transduce, toArray } from '../reducing.js'
 import { $ } from '../pathref'
 import { composeIOGraph, edge, source, sink, iograph, iochain } from '../iograph.js'
@@ -14,7 +14,7 @@ const edgeFn = (_path, [type, name]) =>
 // Implicitly test composeIOGraph by using it to test iochain and iograph
 const testGraph = (g, inputs) =>
   transduce(
-    multiplex(composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn }))(toArray),
+    spread(composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn }))(toArray),
     [],
     inputs)
 

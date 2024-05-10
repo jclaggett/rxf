@@ -70,6 +70,36 @@ export const xfgraph = (g, {
   return spread(xfs)
 }
 
+// XF Graph Library
+
+/**
+ * return a graph that describes multiple labeled inputs that are
+ * correspondingly tagged and merged into an out node.
+ */
+export const multiplex = (labels) =>
+  graph({
+    nodes: {
+      ...Object.fromEntries(
+        labels.map(label => [label, tag(label)])),
+      out: takeAll
+    },
+    links: labels.map(label => [$[label], $.out])
+  })
+
+/**
+ * return a graph that describes an input of labeled values spread out to
+ * detagging nodes with the same name.
+ */
+export const demultiplex = (labels) =>
+  graph({
+    nodes: {
+      in: takeAll,
+      ...Object.fromEntries(
+        labels.map(label => [label, detag(label)]))
+    },
+    links: labels.map(label => [$.in, $[label]])
+  })
+
 /**
  * return a graph that joins multiple inputs as arguments to `f`. `actives`
  * describes which inputs generate new calls to `f` when new values are

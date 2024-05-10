@@ -8,7 +8,7 @@ import { identity } from '../util'
 import { $ } from '../pathref'
 import { graph } from '../graph'
 import {
-  composeGraph, xfgraph, mapjoin
+  composeGraph, xfgraph, mapjoin, multiplex, demultiplex
 } from '../xfgraph'
 
 const T = (xf, data) =>
@@ -54,6 +54,51 @@ test('xfgraph works', () => {
     }),
     [['a', 3], ['b', 2]]))
     .toStrictEqual([['c', 4], ['d', 3], ['d'], ['c']])
+})
+
+test('multiplex works', () => {
+  expect(T(xfgraph(multiplex(['a', 'b', 'c']), {
+    rootPathRefs: [$.a, $.b, $.c],
+    leafPathRefs: [$.out]
+  }), [
+    ['a', 3], ['b', 2], ['c', 4],
+    ['b'], ['b', 4], ['a', 5], ['c']
+  ]))
+    .toStrictEqual([
+      ['out', ['a', 3]],
+      ['out', ['b', 2]],
+      ['out', ['c', 4]],
+      ['out', ['b']],
+      ['out', ['a', 5]],
+      ['out', ['c']],
+      ['out', ['a']],
+      ['out']
+    ])
+})
+
+test('demultiplex works', () => {
+  expect(T(xfgraph(demultiplex(['a', 'b', 'c']), {
+    rootPathRefs: [$.in],
+    leafPathRefs: [$.a, $.b, $.c]
+  }), [
+    ['in', ['a', 3]],
+    ['in', ['b', 2]],
+    ['in', ['c', 4]],
+    ['in', ['b']],
+    ['in', ['a', 5]],
+    ['in', ['c']],
+    ['in', ['a']],
+    ['in']
+  ]))
+    .toStrictEqual([
+      ['a', 3],
+      ['b', 2],
+      ['c', 4],
+      ['b'],
+      ['a', 5],
+      ['c'],
+      ['a']
+    ])
 })
 
 test('mapjoin works', () => {

@@ -26,7 +26,7 @@ export const mapcat = (f) =>
   })
 export const flatMap = mapcat
 
-export const reductions = (f, initializer) =>
+export const reductions = (reducer, initializer) =>
   transducer(r => {
     let stepNeverCalled = true
     let state = initializer() // use a thunk to reduce the odds of state leaking
@@ -36,11 +36,11 @@ export const reductions = (f, initializer) =>
           stepNeverCalled = false
           a = r[STEP](a, state)
           if (!isReduced(a)) {
-            state = f(state, v)
+            state = reducer(state, v)
             a = r[STEP](a, state)
           }
         } else {
-          state = f(state, v)
+          state = reducer(state, v)
           a = r[STEP](a, state)
         }
         return a

@@ -20,6 +20,9 @@ export const contains = (...xs) => {
 }
 
 export const isa = (y) => (x) => (x instanceof y)
+export const isArray = isa(Array)
+export const isVariant = (type) => (x) => isArray(x) && first(x) === type
+export const variant = (type) => (...value) => [type, ...value]
 
 export const debug = (x) => {
   console.dir([typeof x, x], { colors: true, depth: 5 })

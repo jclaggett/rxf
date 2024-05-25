@@ -171,7 +171,7 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
         const cycleText = r.transduce(
           compose(
             xf.dropWhile(path => path !== subpath),
-            xf.epilog(subpath),
+            xf.append(subpath),
             xf.map(path => pathRefToString(arrayToPathRef(path))),
             xf.interpose(' -> ')
           )(r.sum),

@@ -4,7 +4,7 @@
 
 import {
   STEP, RESULT,
-  transducer, isReduced, reduced, ensureReduced, ensureUnreduced, reduce
+  transducer, isReduced, reduced, unreduced, ensureUnreduced, reduce
 } from './reducing.js'
 import {
   compose, identity, second, rest, last, isa, variant, isVariant, isEmpty
@@ -208,10 +208,10 @@ export const append = (x) =>
     }
   })
 
-// after: step `x` after dropping all values.
+// after: step `x` after ignoring all values.
 export const after = (x) =>
   compose(
-    dropAll,
+    mapcat(_ => []),
     append(x))
 
 // tag & detag tranducers
@@ -244,22 +244,22 @@ export const spread = (xfs) =>
         ? xfs[0] // trivial case: no need to spread to only one transducer
         : transducer(r1 => {
           const r2 = merge(xfs.length)(r1)
-          const rs = xfs.map(xf => xf(r2))
-          let rsStep = [...rs]
+          let rs = xfs.map(xf => xf(r2))
           return {
             [STEP]: (a, v) => {
-              a = rsStep.reduce(
+              a = rs.reduce(
                 (a, r, i) => {
                   a = r[STEP](a, v)
                   if (isReduced(a)) {
-                    rsStep[i] = null
+                    rs[i] = null
+                    a = r[RESULT](unreduced(a))
                   }
-                  return ensureUnreduced(a)
+                  return a
                 },
                 a)
-              rsStep = rsStep.filter(r => r != null)
-              if (isEmpty(rsStep)) {
-                a = ensureReduced(a)
+              rs = rs.filter(r => r != null)
+              if (isEmpty(rs)) {
+                a = reduced(a)
               }
               return a
             },

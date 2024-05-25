@@ -7,7 +7,7 @@ import {
   transducer, isReduced, reduced, ensureReduced, ensureUnreduced, reduce
 } from './reducing.js'
 import {
-  compose, identity, second, rest, last, isa, variant, isVariant
+  compose, identity, second, rest, last, isa, variant, isVariant, isEmpty
 } from './util.js'
 
 // Transducer Protocol: for now, any function is a transducer (obviously not true)
@@ -22,8 +22,8 @@ export const mapcat = (f) =>
           isReduced(v)
             ? reduced(a)
             : r[STEP](a, v),
-          a,
-          f(v))
+        a,
+        f(v))
     }
   })
 export const flatMap = mapcat
@@ -239,33 +239,33 @@ export const spread = (xfs) =>
   (xfs.length === 0)
     ? dropAll // trivial case: zero transducers to spread
     : (xfs.length === 1)
-      ? xfs[0] // trivial case: no need to spread to only one transducer
-      : transducer(r1 => {
-        const r2 = merge(xfs.length)(r1)
-        const rs = xfs.map(xf => xf(r2))
-        let rsStep = [...rs]
-        return {
-          [STEP]: (a, v) => {
-            a = rsStep.reduce(
-              (a, r, i) => {
-                a = r[STEP](a, v)
-                if (isReduced(a)) {
-                  rsStep[i] = null
-                }
-                return ensureUnreduced(a)
-              },
-              a)
-            rsStep = rsStep.filter(r => r != null)
-            if (isEmpty(rsStep)) {
-              a = ensureReduced(a)
-            }
-            return a
-          },
+        ? xfs[0] // trivial case: no need to spread to only one transducer
+        : transducer(r1 => {
+          const r2 = merge(xfs.length)(r1)
+          const rs = xfs.map(xf => xf(r2))
+          let rsStep = [...rs]
+          return {
+            [STEP]: (a, v) => {
+              a = rsStep.reduce(
+                (a, r, i) => {
+                  a = r[STEP](a, v)
+                  if (isReduced(a)) {
+                    rsStep[i] = null
+                  }
+                  return ensureUnreduced(a)
+                },
+                a)
+              rsStep = rsStep.filter(r => r != null)
+              if (isEmpty(rsStep)) {
+                a = ensureReduced(a)
+              }
+              return a
+            },
 
-          [RESULT]: (a) =>
-            rs.reduce((a, r) => r[RESULT](a), a)
-        }
-      })
+            [RESULT]: (a) =>
+              rs.reduce((a, r) => r[RESULT](a), a)
+          }
+        })
 
 export const merge = (n) => {
   if (n < 2) {

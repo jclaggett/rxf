@@ -6,7 +6,7 @@ import { identity } from '../util.js'
 import { spread, tag, detag } from '../xflib.js'
 import { transduce, toArray } from '../reducing.js'
 import { $ } from '../pathref'
-import { composeIOGraph, edge, source, sink, iograph, iochain } from '../iograph.js'
+import { composeIOGraph, source, sink, iograph, iochain } from '../iograph.js'
 
 const edgeFn = (_path, [type, name]) =>
   [(type === 'source' ? detag : tag)(name)]
@@ -58,15 +58,16 @@ test('iograph works', () => {
   expect(testGraph(
     iograph({
       nodes: {
-        a: edge('a'),
-        b: identity
+        a: source('a'),
+        b: identity,
+        c: sink('c')
       },
       links: [
         [$.a, $.b],
-        [$.b, $.a]
+        [$.b, $.c]
       ]
     }),
     [['a', 1], ['b', 2], ['a', 3]]
   ))
-    .toStrictEqual([['a', 1], ['a', 3], ['a']])
+    .toStrictEqual([['c', 1], ['c', 3], ['c']])
 })

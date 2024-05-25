@@ -1,6 +1,6 @@
 {
   "name": "@metagov/rxf",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "ISC",
   "author": "Jonathan Claggett",
   "email": "jonathan@claggett.org",
@@ -9,7 +9,7 @@
     "url": "https://github.com/jclaggett/rxf/issues",
     "email": "jonathan@claggett.org"
   },
-  "description": "Reactive transducer framework. Build programs in a reactive style with transducers.",
+  "description": "Reactive transducer framework. Build programs as a graph of transducers reacting to sources and emitting into sinks.",
   "keywords": [
     "rxf",
     "reactive",

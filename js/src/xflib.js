@@ -6,9 +6,11 @@ import {
   STEP, RESULT,
   transducer, isReduced, reduced, ensureReduced, ensureUnreduced, reduce
 } from './reducing.js'
-import { compose, identity, first, second, rest, last, isa } from './util.js'
+import {
+  compose, identity, second, rest, last, isa, variant, isVariant
+} from './util.js'
 
-// Transducer Protocol: for now, any function is a transducer
+// Transducer Protocol: for now, any function is a transducer (obviously not true)
 export const isXf = isa(Function)
 
 // mapcat: call `f` with current value and stepping through all returned values
@@ -20,8 +22,8 @@ export const mapcat = (f) =>
           isReduced(v)
             ? reduced(a)
             : r[STEP](a, v),
-        a,
-        f(v))
+          a,
+          f(v))
     }
   })
 export const flatMap = mapcat
@@ -187,10 +189,10 @@ export const interpose = (sep) =>
 
 // prolog & epilog: step an initial value before first step and a final value
 // after last step.
-export const prolog = (x) =>
+export const prepend = (x) =>
   reductions((_, v) => v, () => x)
 
-export const epilog = (x) =>
+export const append = (x) =>
   transducer(r => {
     let stepWasReduced = false
     return {
@@ -208,17 +210,17 @@ export const epilog = (x) =>
 export const after = (x) =>
   compose(
     dropAll,
-    epilog(x))
+    append(x))
 
 // tag & detag tranducers
 export const tag = (k) =>
   compose(
-    map(x => [k, x]),
-    epilog([k]))
+    map(variant(k)),
+    append([k]))
 
 export const detag = (k) =>
   compose(
-    filter(x => x instanceof Array && x.length > 0 && first(x) === k),
+    filter(isVariant(k)),
     takeWhile(x => x.length === 2),
     map(second))
 
@@ -237,33 +239,33 @@ export const spread = (xfs) =>
   (xfs.length === 0)
     ? dropAll // trivial case: zero transducers to spread
     : (xfs.length === 1)
-        ? xfs[0] // trivial case: no need to spread to only one transducer
-        : transducer(r1 => {
-          const r2 = merge(xfs.length)(r1)
-          let rs = xfs.map(xf => xf(r2))
-          return {
-            [STEP]: (a, v) => {
-              a = rs.reduce(
-                (a, r, i) => {
-                  a = r[STEP](a, v)
-                  if (isReduced(a)) {
-                    rs[i] = null
-                    a = r[RESULT](ensureUnreduced(a))
-                  }
-                  return a
-                },
-                a)
-              rs = rs.filter(x => x != null)
-              if (rs.length === 0) {
-                a = ensureReduced(a)
-              }
-              return a
-            },
+      ? xfs[0] // trivial case: no need to spread to only one transducer
+      : transducer(r1 => {
+        const r2 = merge(xfs.length)(r1)
+        const rs = xfs.map(xf => xf(r2))
+        let rsStep = [...rs]
+        return {
+          [STEP]: (a, v) => {
+            a = rsStep.reduce(
+              (a, r, i) => {
+                a = r[STEP](a, v)
+                if (isReduced(a)) {
+                  rsStep[i] = null
+                }
+                return ensureUnreduced(a)
+              },
+              a)
+            rsStep = rsStep.filter(r => r != null)
+            if (isEmpty(rsStep)) {
+              a = ensureReduced(a)
+            }
+            return a
+          },
 
-            [RESULT]: (a) =>
-              rs.reduce((a, r) => r[RESULT](a), a)
-          }
-        })
+          [RESULT]: (a) =>
+            rs.reduce((a, r) => r[RESULT](a), a)
+        }
+      })
 
 export const merge = (n) => {
   if (n < 2) {

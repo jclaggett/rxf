@@ -2,7 +2,7 @@
 
 import * as rxf from '../src/index.js'
 import {
-  $, takeWhile, mapjoin, map, sink, source, prolog, identity,
+  $, takeWhile, mapjoin, map, sink, source, prepend, identity,
   after
 } from '../src/index.js'
 
@@ -11,8 +11,8 @@ const dirGraph = ([dirname, ...dirnames], { padding, useTitles }) =>
     nodes: {
       entries: source('dir', dirname),
       entryNames: rxf.iochain(
-        map(x => `${padding}${x.name}`),
-        useTitles ? prolog(`\n${dirname}`) : identity
+        useTitles ? prepend(`\n${dirname}`) : identity,
+        map(x => `${padding}${x.name}`)
       ),
 
       log: sink('log'),
@@ -54,7 +54,7 @@ export const lsGraph = () =>
 
       dirnames: takeWhile(dirnames => dirnames.length > 0),
 
-      dirGraph: mapjoin(dirGraph, [true, false]),
+      dirGraph: mapjoin(dirGraph, [{ active: true }, { active: false }]),
 
       run: sink('run'),
       debug: sink('debug')
@@ -72,6 +72,6 @@ export const lsGraph = () =>
   })
 
 const ls = lsGraph()
-rxf.pg(ls)
-debugger
+// rxf.pg(ls)
+// debugger
 await rxf.run(ls)

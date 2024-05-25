@@ -33,7 +33,7 @@ export const edges = {
   },
 
   log: {
-    sink: () => callSink(x => console.log(x))
+    sink: () => callSink(console.log)
   },
 
   call: {
@@ -41,6 +41,8 @@ export const edges = {
   },
 
   timer: {
+    // TODO: Add a second `jitter` arg that randomizes `ms`
+    // TODO: figure out how to handle randomness.
     source: (ms) =>
       r.transducer(rf => {
         return {
@@ -114,15 +116,6 @@ const runEdgeConstructor = (childPromises, context) => ({
       runGraph(x, context)))
 })
 
-const makeEdgeFn = (edges) =>
-  (_path, value) => {
-    const [type, name, ...args] = value
-    const edge = edges[name]
-    return edge != null && edge[type] != null
-      ? [edge[type](...args)]
-      : []
-  }
-
 const runGraph = async (g, context) => {
   const childPromises = []
   const pipes = derive({}, context.pipes)
@@ -130,15 +123,35 @@ const runGraph = async (g, context) => {
     pipe: pipeEdgeConstructor(pipes),
     run: runEdgeConstructor(childPromises, derive({ pipes }, context))
   }, context.edges)
-  const edgeFn = makeEdgeFn(edges)
-  const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })
-  const rf = r.nullReducer
-  const a = rf[r.INIT]()
-  const rfs = xfs.map(xf => xf(rf))
 
+  const edgeFn = (_path, value) => {
+    const [type, name, ...args] = value
+    const edge = edges[name]
+    return edge != null && edge[type] != null
+      ? [edge[type](...args)]
+      : []
+  }
+
+  const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })
+  const rfs = xfs.map(xf => xf(r.nullReducer))
+
+  // Perform a single asynchronous step across all reducers. Any exceptions
+  // that are raised are expected to be caught by inside the step calls and
+  // forwarded via a generic error source.
+  // NOTE: the accumulator is _always_ null below because the reducer is a
+  // nullReducer
   await Promise.all(rfs.map(async rf => {
-    const a2 = await rf[r.STEP](a, context.initValue)
-    return rf[r.RESULT](r.ensureUnreduced(a2))
+    try {
+      await rf[r.STEP](null, context.initValue)
+    } catch (e) {
+      setImmediate(() => {
+        if (pipes.error != null) {
+          pipes.error.send(e)
+        }
+      })
+    }
+
+    return rf[r.RESULT](null)
   }))
 
   await Promise.all(childPromises)

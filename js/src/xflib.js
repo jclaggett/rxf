@@ -28,6 +28,8 @@ export const mapcat = (f) =>
   })
 export const flatMap = mapcat
 
+const EOS = reduced(null)
+
 export const reductions = (reducer, initializer) =>
   transducer(r => {
     let stepNeverCalled = true
@@ -123,7 +125,7 @@ export const partition = (width, stride) => {
 
 // dropAll: ignore all steps
 export const dropAll =
-  mapcat(_ => [])
+  mapcat(_ => [EOS])
 
 // take: only step `n` times.
 export const take = (n) =>
@@ -133,7 +135,7 @@ export const take = (n) =>
       reductions((a, v) => {
         a.vs[0] = v
         if (++a.i >= n) {
-          a.vs.push(reduced(null))
+          a.vs.push(EOS)
         }
         return a
       }, () => ({
@@ -144,7 +146,7 @@ export const take = (n) =>
 
 // takeWhile: only step through while `pred(v)` is true.
 export const takeWhile = (pred) =>
-  mapcat(v => [pred(v) ? v : reduced(null)])
+  mapcat(v => [pred(v) ? v : EOS])
 
 // takeAll: step through all values given
 export const takeAll = identity

@@ -5,7 +5,7 @@
 import { jest } from '@jest/globals'
 import { flatMap, map, take, emit } from '../xflib'
 import { $ } from '../pathref'
-import { edge, source, sink, iograph, iochain } from '../iograph.js'
+import { source, sink, iograph, iochain } from '../iograph.js'
 import { run } from '../runner.js'
 
 beforeAll(() => {
@@ -35,7 +35,7 @@ test('run works', async () => {
       a: source('init'),
       b: map(x => x.argv[0]),
       c: map(x => x.env.USER),
-      d: edge('call', (x) => result.push(x))
+      d: sink('call', (x) => result.push(x))
     },
     links: [
       [$.a, $.b], [$.a, $.c], [$.b, $.d], [$.c, $.d]

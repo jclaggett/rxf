@@ -53,7 +53,7 @@ test('xfgraph works', () => {
       leafPathRefs: [$.c, $.d]
     }),
     [['a', 3], ['b', 2]]))
-    .toStrictEqual([['c', 4], ['d', 3], ['d'], ['c']])
+    .toStrictEqual([['c', 4], ['d', 3], ['c'], ['d']])
 })
 
 test('multiplex works', () => {
@@ -68,10 +68,10 @@ test('multiplex works', () => {
       ['out', ['a', 3]],
       ['out', ['b', 2]],
       ['out', ['c', 4]],
-      ['out', ['b']],
       ['out', ['a', 5]],
-      ['out', ['c']],
       ['out', ['a']],
+      ['out', ['b']],
+      ['out', ['c']],
       ['out']
     ])
 })
@@ -94,10 +94,10 @@ test('demultiplex works', () => {
       ['a', 3],
       ['b', 2],
       ['c', 4],
-      ['b'],
       ['a', 5],
-      ['c'],
-      ['a']
+      ['a'],
+      ['b'],
+      ['c']
     ])
 })
 

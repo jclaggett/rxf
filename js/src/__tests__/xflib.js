@@ -13,7 +13,7 @@ import {
   dropAll,
   dropWhile,
   emit,
-  epilog,
+  append,
   filter,
   filter2,
   flatMap,
@@ -23,7 +23,7 @@ import {
   map,
   spread,
   partition,
-  prolog,
+  prepend,
   reductions,
   remove,
   tag,
@@ -104,20 +104,20 @@ test('dedupe works', () => {
 })
 
 test('prolog works', () => {
-  expect(T(prolog(42), data))
+  expect(T(prepend(42), data))
     .toStrictEqual([42, 1, 2, 3])
-  expect(T(compose(prolog(42), take(1)), data))
+  expect(T(compose(prepend(42), take(1)), data))
     .toStrictEqual([42])
-  expect(T(prolog(42), []))
+  expect(T(prepend(42), []))
     .toStrictEqual([42])
 })
 
 test('epilog works', () => {
-  expect(T(epilog(42), data))
+  expect(T(append(42), data))
     .toStrictEqual([1, 2, 3, 42])
-  expect(T(epilog(42), []))
+  expect(T(append(42), []))
     .toStrictEqual([42])
-  expect(T(compose(epilog(42), take(2)), [1, 2, 3]))
+  expect(T(compose(append(42), take(2)), [1, 2, 3]))
     .toStrictEqual([1, 2])
 })
 

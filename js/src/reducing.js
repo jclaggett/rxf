@@ -47,8 +47,8 @@ export const transduce = (r, a, vs) =>
 
 export const nullReducer = {
   [INIT]: () => null,
-  [STEP]: (a, _x) => a,
-  [RESULT]: (a) => a
+  [STEP]: (_a, _x) => null,
+  [RESULT]: (_a) => null
 }
 
 export const toArray = {

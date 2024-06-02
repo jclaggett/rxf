@@ -11,9 +11,8 @@ const dirGraph = ([dirname, ...dirnames], { padding, useTitles }) =>
     nodes: {
       entries: source('dir', dirname),
       entryNames: rxf.iochain(
-        useTitles ? prepend(`\n${dirname}`) : identity,
-        map(x => `${padding}${x.name}`)
-      ),
+        map(x => `${padding}${x.name}`),
+        useTitles ? prepend(`\n${dirname}`) : identity),
 
       log: sink('log'),
 

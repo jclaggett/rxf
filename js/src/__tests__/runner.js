@@ -188,3 +188,38 @@ test('iochain works', async () => {
   )))
     .toStrictEqual(undefined)
 })
+
+test('error handling works', async () => {
+  // TODO reset the pipes state between runs!
+  expect(await run(iograph({
+    nodes: {
+      init: source('init'),
+      test: map(_ => { throw "Test Error" }),
+      once: take(1),
+      debug: sink('debug')
+    },
+    links: [
+      [$.init, $.test],
+      [$.test, $.once],
+      [$.once, $.debug]
+    ]
+  })))
+    .toStrictEqual(undefined)
+
+  expect(await run(iograph({
+    nodes: {
+      init: source('init'),
+      error: source('pipe', 'error'),
+      test: map(_ => { throw "Test Error" }),
+      once: take(1),
+      debug: sink('debug')
+    },
+    links: [
+      [$.init, $.test],
+      [$.test, $.debug],
+      [$.error, $.once],
+      [$.once, $.debug]
+    ]
+  })))
+    .toStrictEqual(undefined)
+})

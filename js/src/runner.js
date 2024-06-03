@@ -145,7 +145,9 @@ const runGraph = async (g, context) => {
       await rf[r.STEP](null, context.initValue)
     } catch (e) {
       setImmediate(() => {
-        if (pipes.error != null) {
+        if (pipes.error == null) {
+          console.log(`Warning! Error was ignored: ${e}`)
+        } else {
           pipes.error.send(e)
         }
       })

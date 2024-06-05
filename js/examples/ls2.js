@@ -2,17 +2,21 @@
 
 import * as rxf from '../src/index.js'
 import {
-  $, takeWhile, mapjoin, map, sink, source, prepend, identity,
-  after
+  $, take, takeWhile, takeAll, mapjoin, map, sink, source, prepend,
+  after, remove
 } from '../src/index.js'
 
-const dirGraph = ([dirname, ...dirnames], { padding, useTitles }) =>
+const dirGraph = (
+  [dirname, ...dirnames], // active
+  { padding, useTitles, showHidden }) => // passive
+
   rxf.iograph({
     nodes: {
       entries: source('dir', dirname),
-      entryNames: rxf.iochain(
+      entryNames: rxf.chain(
+        showHidden ? takeAll : remove(entry => entry.name.startsWith('.')),
         map(x => `${padding}${x.name}`),
-        useTitles ? prepend(`\n${dirname}`) : identity),
+        useTitles ? prepend(`\n${dirname}`) : takeAll),
 
       log: sink('log'),
 
@@ -35,12 +39,20 @@ export const lsGraph = () =>
       init: source('init'),
 
       config: map(({ argv }) => {
-        const dirnames = argv.slice(2)
+        let dirnames = argv.slice(2)
+
+        let showHidden = false
+        if (rxf.first(dirnames) === '-a') {
+          dirnames = rxf.rest(dirnames)
+          showHidden = true
+        }
+
         const useTitles = dirnames.length > 1
         return {
           useTitles,
           padding: ' '.repeat(useTitles ? 4 : 0),
-          dirnames
+          dirnames,
+          showHidden
         }
       }),
 

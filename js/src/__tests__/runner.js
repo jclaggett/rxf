@@ -194,7 +194,7 @@ test('error handling works', async () => {
   expect(await run(iograph({
     nodes: {
       init: source('init'),
-      test: map(_ => { throw "Test Error" }),
+      test: map(_ => { throw new Error('Test Error') }),
       once: take(1),
       debug: sink('debug')
     },
@@ -210,7 +210,7 @@ test('error handling works', async () => {
     nodes: {
       init: source('init'),
       error: source('pipe', 'error'),
-      test: map(_ => { throw "Test Error" }),
+      test: map(_ => { throw new Error('Test Error') }),
       once: take(1),
       debug: sink('debug')
     },

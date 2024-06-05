@@ -159,11 +159,11 @@ const runGraph = async (g, context) => {
   await Promise.all(childPromises)
 }
 
-const rootContext = {
-  initValue: process,
-  edges,
-  pipes: {}
-}
+const rootContext = { edges }
 
-export const run = (g, context = {}) =>
-  runGraph(g, derive(context, rootContext))
+export const run = (g, { initValue = process, edges = {}, pipes = {} } = {}) =>
+  runGraph(g, {
+    initValue,
+    edges: derive(edges, rootContext.edges),
+    pipes
+  })

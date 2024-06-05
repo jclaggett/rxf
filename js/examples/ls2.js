@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { opendir } from 'fs/promises'
+
 import * as rxf from '../src/index.js'
 import {
   $, take, takeWhile, takeAll, mapjoin, map, sink, source, prepend,
@@ -82,7 +84,25 @@ export const lsGraph = () =>
     ]
   })
 
+const edges = {
+  dir: {
+    source: (path) =>
+      rxf.transducer(rf => ({
+        [rxf.STEP]: async (a, _x) => {
+          const dir = await opendir(path)
+          for await (const dirent of dir) {
+            a = rf[rxf.STEP](a, dirent)
+            if (rxf.isReduced(a)) {
+              break
+            }
+          }
+          return a
+        }
+      }))
+  }
+}
+
 const ls = lsGraph()
 // rxf.pg(ls)
 // debugger
-await rxf.run(ls)
+await rxf.run(ls, { edges })

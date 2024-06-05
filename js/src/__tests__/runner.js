@@ -71,16 +71,6 @@ test('various sources and sinks work', async () => {
 
   expect(await run(iograph({
     nodes: {
-      a: source('dir', '.'),
-      b: take(2),
-      c: sink('debug')
-    },
-    links: [[$.a, $.b], [$.b, $.c]]
-  })))
-    .toStrictEqual(undefined)
-
-  expect(await run(iograph({
-    nodes: {
       a: source('time', { freq: 0 }),
       b: take(2),
       c: map(ts => p => [ts, p]),

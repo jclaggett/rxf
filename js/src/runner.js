@@ -1,8 +1,6 @@
 // Purpose of this namespace is to introduce source and sink concepts to
 // transducer graphs and to provide runners that 'transduce' values from
 // sources into sinks via a given graph.
-import { opendir } from 'fs/promises'
-
 import { composeIOGraph } from './iograph.js'
 import * as r from './reducing.js'
 import { derive } from './util.js'
@@ -58,22 +56,6 @@ export const edges = {
           }
         }
       })
-  },
-
-  dir: {
-    source: (path) =>
-      r.transducer(rf => ({
-        [r.STEP]: async (a, _x) => {
-          const dir = await opendir(path)
-          for await (const dirent of dir) {
-            a = rf[r.STEP](a, dirent)
-            if (r.isReduced(a)) {
-              break
-            }
-          }
-          return a
-        }
-      }))
   }
 }
 

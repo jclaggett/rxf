@@ -189,7 +189,7 @@ export const interpose = (sep) =>
     mapcat(x => [sep, x]),
     drop(1))
 
-// prolog & epilog: step an initial value before first step and a final value
+// prepend & append: step an initial value before first step and a final value
 // after last step.
 export const prepend = (x) =>
   reductions((_, v) => v, () => x)
@@ -222,7 +222,7 @@ export const tag = (k) =>
 
 export const detag = (k) =>
   compose(
-    filter(isVariant(k)),
+    keep(isVariant(k)),
     takeWhile(x => x.length === 2),
     map(second))
 

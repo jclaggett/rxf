@@ -1,5 +1,7 @@
-import { compose, graph, source, sink, $, dedupe, take, map } from '../src/xf/index'
-export { run } from '../src/xf/index'
+#!/usr/bin/env node
+
+import * as rxf from '../src/index.js'
+import { compose, graph, source, sink, $, dedupe, take, map } from '../src/index.js'
 
 // Define a spinner net
 const spinnerString =
@@ -16,10 +18,10 @@ const spinnerString =
     '⠏'
   ]
 
-export const spinner = graph(
-  {
+export const spinner = graph({
+  nodes: {
     // freq is 30hz
-    time: source('time', { freq: 1000 / 60 }),
+    time: source('timer', 1000 / 60),
 
     limitedTime: take(600),
 
@@ -45,11 +47,23 @@ export const spinner = graph(
     log: sink('log')
   },
 
-  [
+  links: [
     [$.time, $.limitedTime],
     [$.limitedTime, $.spinnerIndex],
     [$.spinnerIndex, $.spinner],
     // [$.spinnerIndex, $.log],
     [$.spinner, $.streamFn],
     [$.streamFn, $.stdout]
-  ])
+  ]
+})
+
+const processEdge = {
+  sink: () =>
+    rxf.transducer(_ => ({
+      [rxf.STEP]: (a, f) => {
+        f(process)
+        return a
+      }
+    }))
+}
+rxf.run(spinner, { edges: { process: processEdge } })

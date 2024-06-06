@@ -17,7 +17,7 @@ const callSink = (f) =>
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-export const edges = {
+export const basicEdges = {
 
   init: {
     source: () =>
@@ -141,11 +141,9 @@ const runGraph = async (g, context) => {
   await Promise.all(childPromises)
 }
 
-const rootContext = { edges }
-
-export const run = (g, { initValue = process, edges = {}, pipes = {} } = {}) =>
+export const run = (g, { initValue = null, edges = {}, pipes = {} } = {}) =>
   runGraph(g, {
     initValue,
-    edges: derive(edges, rootContext.edges),
+    edges: derive(edges, basicEdges),
     pipes
   })

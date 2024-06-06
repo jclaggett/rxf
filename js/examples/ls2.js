@@ -105,4 +105,4 @@ const edges = {
 const ls = lsGraph()
 // rxf.pg(ls)
 // debugger
-await rxf.run(ls, { edges })
+await rxf.run(ls, { initValue: process, edges })

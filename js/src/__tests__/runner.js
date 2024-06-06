@@ -71,10 +71,10 @@ test('various sources and sinks work', async () => {
 
   expect(await run(iograph({
     nodes: {
-      a: source('time', { freq: 0 }),
+      a: source('timer', 0),
       b: take(2),
       c: map(ts => p => [ts, p]),
-      d: sink('process')
+      d: sink('log')
     },
     links: [[$.a, $.b], [$.b, $.c], [$.c, $.d]]
   })))
@@ -90,7 +90,7 @@ test('various sources and sinks work', async () => {
       d: sink('log')
     },
     links: [[$.a, $.b], [$.b, $.fooOut], [$.fooIn, $.c], [$.c, $.d]]
-  })))
+  }), { initValue: process }))
     .toStrictEqual(undefined)
 })
 
@@ -115,7 +115,7 @@ test('pipes work', async () => {
       d: sink('log')
     },
     links: [[$.a, $.b], [$.b, $.fooOut], [$.fooIn, $.c], [$.c, $.d]]
-  })))
+  }), { initValue: process }))
     .toStrictEqual(undefined)
 })
 

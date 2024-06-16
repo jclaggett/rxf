@@ -1,35 +1,27 @@
-/* TODO create a custom inspector method on the Proxy object so that debug
-   messages with pathRefs are more readable. challenge: derive a customized
-   Proxy class.
-
-const util = require('util')
-class MyProxy {
-  constructor (value, handler) {
-    Object.setPrototypeOf(
-      Object.getPrototypeOf(this),
-      new Proxy(value, handler))
-  }
-
-  [util.inspect.custom] (depth, options, _) {
-    if (depth < 0) {
-      return options.stylize('[$]', 'special')
-    }
-    return [options.stylize('$', 'special'), ...this].join('.')
-  }
-}
-
-*/
-
 // All pathRefs defined will be stored in the following WeakMap.
 const pathRefs = new WeakMap()
 
+const isDottedLiteral = (x) => /^[$a-zA-Z_][a-zA-Z0-9_]*$/.test(x)
+const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
+
 const newPathRef = (path) => {
-  const ref = new Proxy({}, {
-    get: (subpaths, name) => {
-      if (!(name in subpaths)) {
-        subpaths[name] = newPathRef([...path, name])
+  const internalObject = {
+    [Symbol.for('nodejs.util.inspect.custom')]: () =>
+      '$' + path
+        .map(x =>
+          isDottedLiteral(x)
+            ? `.${x}`
+            : isIndexLiteral(x)
+              ? `[${x}]`
+              : `['${x}']`)
+        .join('')
+  }
+  const ref = new Proxy(internalObject, {
+    get: (subpaths, prop) => {
+      if (!(prop in subpaths)) {
+        subpaths[prop] = newPathRef([...path, prop])
       }
-      return subpaths[name]
+      return subpaths[prop]
     }
   })
   pathRefs.set(ref, path)

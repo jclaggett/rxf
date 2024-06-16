@@ -4,7 +4,7 @@ import { opendir } from 'fs/promises'
 
 import * as rxf from '../src/index.js'
 import {
-  $, take, takeWhile, takeAll, mapjoin, map, sink, source, prepend,
+  $, takeWhile, takeAll, mapjoin, map, sink, source, prepend,
   after, remove
 } from '../src/index.js'
 

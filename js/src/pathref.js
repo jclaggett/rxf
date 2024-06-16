@@ -6,15 +6,17 @@ const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
 
 const newPathRef = (path) => {
   const internalObject = {
-    [Symbol.for('nodejs.util.inspect.custom')]: () =>
-      '$' + path
-        .map(x =>
-          isDottedLiteral(x)
-            ? `.${x}`
-            : isIndexLiteral(x)
-              ? `[${x}]`
-              : `['${x}']`)
-        .join('')
+    [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
+      options.stylize(
+        '$' + path
+          .map(x =>
+            isDottedLiteral(x)
+              ? `.${x}`
+              : isIndexLiteral(x)
+                ? `[${x}]`
+                : `['${x}']`)
+          .join(''),
+        'special')
   }
   const ref = new Proxy(internalObject, {
     get: (subpaths, prop) => {

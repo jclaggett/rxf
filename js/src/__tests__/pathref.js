@@ -28,3 +28,18 @@ test('pathrefs', () => {
   expect(arrayViaPathRef(['a', 'b', 'c']))
     .toBe(arrayViaPathRef(['a', 'b', 'c']))
 })
+
+test('pathref custom printing', () => {
+  expect(`${$.a.b.c}`)
+    .toStrictEqual('$.a.b.c')
+  expect(`${$.a[2].c}`)
+    .toStrictEqual('$.a[2].c')
+  expect(`${$.a['2']['c']}`)
+    .toStrictEqual('$.a[2].c')
+  expect(`${$.a[2]['c d']}`)
+    .toStrictEqual('$.a[2][\'c d\']')
+
+  // test custom printing
+  expect($.a.b.c[Symbol.for('nodejs.util.inspect.custom')](0, { stylize: (x) => x }))
+    .toStrictEqual('$.a.b.c')
+})

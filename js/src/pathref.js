@@ -4,22 +4,28 @@ const pathRefs = new WeakMap()
 const isDottedLiteral = (x) => /^[$a-zA-Z_][a-zA-Z0-9_]*$/.test(x)
 const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
 
+const renderPath = (path) =>
+  '$' + path
+    .map(x =>
+      isDottedLiteral(x)
+        ? `.${x}`
+        : isIndexLiteral(x)
+          ? `[${x}]`
+          : `['${x}']`)
+    .join('')
+
 const newPathRef = (path) => {
   const internalObject = {
-    [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
-      options.stylize(
-        '$' + path
-          .map(x =>
-            isDottedLiteral(x)
-              ? `.${x}`
-              : isIndexLiteral(x)
-                ? `[${x}]`
-                : `['${x}']`)
-          .join(''),
-        'special')
+    [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) => {
+      return options.stylize(renderPath(path), 'special')
+    }
   }
   const ref = new Proxy(internalObject, {
     get: (subpaths, prop) => {
+      // Handle rendering as a string
+      if (prop === Symbol.toPrimitive) {
+        return () => renderPath(path)
+      }
       if (!(prop in subpaths)) {
         subpaths[prop] = newPathRef([...path, prop])
       }
@@ -44,17 +50,14 @@ export const pathRefToArray = (x) =>
     : x
 
 /**
- * Return a string representing a pathRef. Useful for printing but not safe to
- * evaluate since it assumes each element of the path can be a dotted literal
- * and numbers, in particular, are not viable. the returned pathRef will be a
- * subpath of the it.
+ * Return a string representing a pathRef. Consider just using
+ * `String(x)` or `${x}`
  */
 export const pathRefToString = (x) =>
   isPathRef(x)
-    ? ['$']
-        .concat(derefPathRef(x))
-        .join('.')
+    ? String(x)
     : x
+
 /**
  * Return a pathRef equivilent to the given array. If `pathRef` is specified,
  * the returned pathRef will be a subpath of the it.

@@ -50,3 +50,21 @@ test('util fns work', () => {
   expect(util.debug(42))
     .toStrictEqual(42)
 })
+
+test('contains works with arrays', () => {
+  const data = [1, 2, 3]
+  const c = util.contains(data)
+  expect(c([1, 2, 3]))
+    .toStrictEqual(true)
+  expect(c([1, 2, 4]))
+    .toStrictEqual(false)
+})
+
+test('contains works with strings', () => {
+  const data = 'abc'
+  const c = util.contains(data)
+  expect(c('abc'))
+    .toStrictEqual(true)
+  expect(c('ab'))
+    .toStrictEqual(false)
+})

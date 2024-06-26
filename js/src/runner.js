@@ -82,7 +82,7 @@ const pipeEdgeConstructor = (pipes) => ({
     }),
   sink: (name) =>
     callSink((x) =>
-      setImmediate(() => {
+      Promise.resolve().then(() => {
         if (pipes[name] != null) {
           pipes[name].send(x)
         }
@@ -126,7 +126,7 @@ const runGraph = async (g, context) => {
     try {
       await rf[r.STEP](null, context.initValue)
     } catch (e) {
-      setImmediate(() => {
+      Promise.resolve().then(() => {
         if (pipes.error == null) {
           console.log(`Warning! Error was ignored: ${e}`)
         } else {

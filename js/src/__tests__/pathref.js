@@ -34,7 +34,7 @@ test('pathref custom printing', () => {
     .toStrictEqual('$.a.b.c')
   expect(`${$.a[2].c}`)
     .toStrictEqual('$.a[2].c')
-  expect(`${$.a['2']['c']}`)
+  expect(`${$.a['2'].c}`)
     .toStrictEqual('$.a[2].c')
   expect(`${$.a[2]['c d']}`)
     .toStrictEqual('$.a[2][\'c d\']')

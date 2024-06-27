@@ -186,10 +186,22 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
   return true
 }
 
+/**
+ * return partitions of `arr` each `size` long with `step` distance between their first value.
+ */
+const partition = (arr, size, step) => {
+  const partitions = []
+  for (let i = 0; i < arr.length - (size - 1); i += step) {
+    partitions.push(arr.slice(i, i + size))
+  }
+  return partitions
+}
+
 export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) => {
   let g = derive({ nodes, links, in: {}, out: {} }, Graph)
 
   const normalizedLinks = links
+    .flatMap(link => partition(link, 2, 1))
     .map(link => normalizeLink(link, nodes))
 
   g = normalizedLinks
@@ -215,9 +227,7 @@ export const chain = (...nodes) =>
       in: $[0],
       out: $[nodes.length - 1]
     },
-    links: nodes
-      .slice(1)
-      .map((_, i) => [$[i], $[i + 1]])
+    links: [nodes.map((_, i) => $[i])]
   })
 
 /**

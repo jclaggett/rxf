@@ -27,6 +27,7 @@ export const mapcat = (f) =>
     }
   })
 export const flatMap = mapcat
+export const mergeMap = mapcat
 
 const EOS = reduced(null)
 
@@ -56,6 +57,8 @@ export const reductions = (reducer, initializer) =>
     }
   })
 
+export const scan = reductions
+
 // map: call `f` with current value and stepping through returned value
 export const map = (f) =>
   mapcat(v => [f(v)])
@@ -63,17 +66,6 @@ export const map = (f) =>
 // emit: constantly return x for every step
 export const emit = (c) =>
   map(_ => c)
-
-export const trailing = (n) =>
-  compose(
-    reductions((a, v) => {
-      a = (a.length < n)
-        ? [...a]
-        : rest(a)
-      a.push(v)
-      return a
-    }, () => []),
-    drop(1))
 
 // filter: Step only if `pred(v)` is true.
 export const filter = (pred) =>
@@ -100,7 +92,11 @@ export const dedupe = () =>
 // partition: Step width sized groups of values and every stride.
 export const partition = (width, stride) => {
   width = width < 0 ? 0 : width
-  stride = stride < 1 ? 1 : stride
+  stride = stride == null
+    ? width
+    : stride < 1
+      ? 1
+      : stride
 
   return compose(
     reductions((state, v) => {
@@ -115,11 +111,10 @@ export const partition = (width, stride) => {
       }
       return state
     }, () => ({
-      result: null,
+      result: [],
       i: stride - width - 1,
       buffer: []
     })),
-    drop(1),
     mapcat(state => state.result))
 }
 
@@ -133,16 +128,16 @@ export const take = (n) =>
     ? dropAll
     : compose(
       reductions((a, v) => {
-        a.vs[0] = v
+        a.result[0] = v
         if (++a.i >= n) {
-          a.vs.push(EOS)
+          a.result.push(EOS)
         }
         return a
       }, () => ({
         i: 0,
-        vs: []
+        result: []
       })),
-      mapcat(a => a.vs))
+      mapcat(a => a.result))
 
 // takeWhile: only step through while `pred(v)` is true.
 export const takeWhile = (pred) =>
@@ -182,6 +177,20 @@ export const dropWhile = (pred) =>
       vs: []
     })),
     mapcat(a => a.vs))
+
+export const scand = (reducer, initializer) =>
+  compose(
+    scan(reducer, initializer),
+    drop(1))
+
+export const trailing = (n) =>
+  scand((a, v) => {
+    a = (a.length < n)
+      ? [...a]
+      : rest(a)
+    a.push(v)
+    return a
+  }, () => [])
 
 // interpose: Step with sep between each value.
 export const interpose = (sep) =>

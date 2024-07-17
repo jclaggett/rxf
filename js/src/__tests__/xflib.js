@@ -86,6 +86,8 @@ test('partition works', () => {
     .toStrictEqual([[1, 2], [3, 4]])
   expect(T(partition(2, 3), [1, 2, 3, 4, 5]))
     .toStrictEqual([[1, 2], [4, 5]])
+  expect(T(partition(2), [1, 2, 3, 4, 5]))
+    .toStrictEqual([[1, 2], [3, 4]])
 })
 
 test('trailing works', () => {

@@ -7,23 +7,25 @@ import { derive } from './util.js'
 
 // Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
 // f(x) is assumed to perform a side effect of some kind.
-const callSink = (f) =>
+const callSink = (f) => [
   r.transducer(_ => ({
     [r.STEP]: (a, x) => {
       f(x)
       return a
     }
   }))
+]
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export const basicEdges = {
 
   init: {
-    source: () =>
+    source: () => [
       r.transducer(rf => ({
         [r.STEP]: async (a, x) => rf[r.STEP](a, x)
       }))
+    ]
   },
 
   debug: {
@@ -41,7 +43,7 @@ export const basicEdges = {
   timer: {
     // TODO: Add a second `jitter` arg that randomizes `ms`
     // TODO: figure out how to handle randomness.
-    source: (ms) =>
+    source: (ms) => [
       r.transducer(rf => {
         return {
           [r.STEP]: async (a, _x) => {
@@ -56,11 +58,12 @@ export const basicEdges = {
           }
         }
       })
+    ]
   }
 }
 
 const pipeEdgeConstructor = (pipes) => ({
-  source: (name) =>
+  source: (name) => [
     r.transducer(rf => {
       return {
         [r.STEP]: async (a, _x) => {
@@ -79,7 +82,8 @@ const pipeEdgeConstructor = (pipes) => ({
           return a
         }
       }
-    }),
+    })
+  ],
   sink: (name) =>
     callSink((x) =>
       Promise.resolve().then(() => {
@@ -110,7 +114,7 @@ const runGraph = async (g, context) => {
     const [type, name, ...args] = value
     const edge = edges[name]
     return edge != null && edge[type] != null
-      ? [edge[type](...args)]
+      ? edge[type](...args)
       : []
   }
 

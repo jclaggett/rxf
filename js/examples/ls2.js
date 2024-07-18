@@ -86,7 +86,7 @@ export const lsGraph = () =>
 
 const edges = {
   dir: {
-    source: (path) =>
+    source: (path) => [
       rxf.transducer(rf => ({
         [rxf.STEP]: async (a, _x) => {
           const dir = await opendir(path)
@@ -99,6 +99,7 @@ const edges = {
           return a
         }
       }))
+    ]
   }
 }
 

@@ -58,12 +58,13 @@ export const spinner = graph({
 })
 
 const processEdge = {
-  sink: () =>
+  sink: () => [
     rxf.transducer(_ => ({
       [rxf.STEP]: (a, f) => {
         f(process)
         return a
       }
     }))
+  ]
 }
 rxf.run(spinner, { edges: { process: processEdge } })

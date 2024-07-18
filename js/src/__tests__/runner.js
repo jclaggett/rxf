@@ -3,7 +3,7 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { jest } from '@jest/globals'
-import { flatMap, map, take, emit } from '../xflib'
+import { flatMap, map, take, emit, takeAll } from '../xflib'
 import { $ } from '../pathref'
 import { source, sink, iograph, iochain } from '../iograph.js'
 import { run } from '../runner.js'
@@ -211,5 +211,17 @@ test('error handling works', async () => {
       [$.once, $.debug]
     ]
   })))
+    .toStrictEqual(undefined)
+})
+
+test('\'with\' source works', async () => {
+  expect(await run(iograph({
+    nodes: {
+      a: source('with', ['timestamp', 'random'], 'init'),
+      b: takeAll,
+      c: sink('debug')
+    },
+    links: [[$.a, $.b], [$.b, $.c]]
+  }), { initValue: 42 }))
     .toStrictEqual(undefined)
 })

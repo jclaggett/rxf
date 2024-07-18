@@ -21,14 +21,14 @@ const spinnerString =
 export const spinner = graph({
   nodes: {
     // freq is 30hz
-    time: source('timer', 1000 / 60),
+    time: source('with', ['timestamp'], 'timer', 1000 / 60),
 
     limitedTime: take(600),
 
     spinnerIndex: compose(
-      map(ts =>
+      map(({ timestamp }) =>
         // each loop of the spinner is on screen for 2000 ms
-        Math.floor(ts / (2000 / spinnerString.length)) % spinnerString.length),
+        Math.floor(timestamp / (2000 / spinnerString.length)) % spinnerString.length),
       dedupe()
     ),
 

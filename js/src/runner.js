@@ -3,7 +3,8 @@
 // sources into sinks via a given graph.
 import { composeIOGraph } from './iograph.js'
 import * as r from './reducing.js'
-import { derive } from './util.js'
+import { derive, compose } from './util.js'
+import { map } from './xflib.js'
 
 // Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
 // f(x) is assumed to perform a side effect of some kind.
@@ -52,7 +53,7 @@ export const basicEdges = {
               await sleep(ms - (Date.now() - then))
               then = Date.now()
               a = rf[r.STEP](a, then)
-              then += 1
+              then += 1 // why??
             }
             return a
           }
@@ -102,12 +103,34 @@ const runEdgeConstructor = (childPromises, context) => ({
       runGraph(x, context)))
 })
 
+const attributes = {
+  timestamp: () => Date.now(),
+  random: () => Math.random()
+}
+
+const withAttributes = (attrs) =>
+  (event) => ({
+    ...Object.fromEntries(
+      attrs.map(attr =>
+        [attr, attributes[attr]()])),
+    event
+  })
+
 const runGraph = async (g, context) => {
   const childPromises = []
   const pipes = derive({}, context.pipes)
   const edges = derive({
     pipe: pipeEdgeConstructor(pipes),
-    run: runEdgeConstructor(childPromises, derive({ pipes }, context))
+    run: runEdgeConstructor(childPromises, derive({ pipes }, context)),
+    with: {
+      source: (attrs, ...args) => {
+        return edgeFn(null, ['source', ...args])
+          .map(xf => {
+            return compose(xf, map(withAttributes(attrs)))
+          })
+      }
+    }
+
   }, context.edges)
 
   const edgeFn = (_path, value) => {
@@ -117,15 +140,13 @@ const runGraph = async (g, context) => {
       ? edge[type](...args)
       : []
   }
-
   const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })
   const rfs = xfs.map(xf => xf(r.nullReducer))
 
   // Perform a single asynchronous step across all reducers. Any exceptions
   // that are raised are expected to be caught by inside the step calls and
   // forwarded via a generic error source.
-  // NOTE: the accumulator is _always_ null below because the reducer is a
-  // nullReducer
+  // NOTE: the accumulator is _always_ null below because nullReducer is used
   await Promise.all(rfs.map(async rf => {
     try {
       await rf[r.STEP](null, context.initValue)

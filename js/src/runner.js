@@ -105,7 +105,7 @@ const runEdgeConstructor = (childPromises, context) => ({
 
 const attributes = {
   timestamp: () => Date.now(),
-  random: () => Math.random()
+  rng: () => Math.random // Inversion of control is maintained (barely).
 }
 
 const withAttributes = (attrs) =>

@@ -123,8 +123,8 @@ const runGraph = async (g, context) => {
     pipe: pipeEdgeConstructor(pipes),
     run: runEdgeConstructor(childPromises, derive({ pipes }, context)),
     with: {
-      source: (_path, attrs, ...args) => {
-        return edgeFn(null, ['source', ...args])
+      source: (path, attrs, ...args) => {
+        return edgeFn(path, ['source', ...args])
           .map(xf => {
             return compose(xf, map(withAttributes(attrs)))
           })

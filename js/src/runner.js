@@ -22,7 +22,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 export const basicEdges = {
 
   init: {
-    source: () => [
+    source: (_path) => [
       r.transducer(rf => ({
         [r.STEP]: async (a, x) => rf[r.STEP](a, x)
       }))
@@ -30,21 +30,21 @@ export const basicEdges = {
   },
 
   debug: {
-    sink: () => callSink(console.debug)
+    sink: (_path) => callSink(console.debug)
   },
 
   log: {
-    sink: () => callSink(console.log)
+    sink: (_path) => callSink(console.log)
   },
 
   call: {
-    sink: callSink
+    sink: (_path, f) => callSink(f)
   },
 
   timer: {
     // TODO: Add a second `jitter` arg that randomizes `ms`
     // TODO: figure out how to handle randomness.
-    source: (ms) => [
+    source: (_path, ms) => [
       r.transducer(rf => {
         return {
           [r.STEP]: async (a, _x) => {
@@ -64,7 +64,7 @@ export const basicEdges = {
 }
 
 const pipeEdgeConstructor = (pipes) => ({
-  source: (name) => [
+  source: (_path, name) => [
     r.transducer(rf => {
       return {
         [r.STEP]: async (a, _x) => {
@@ -85,7 +85,7 @@ const pipeEdgeConstructor = (pipes) => ({
       }
     })
   ],
-  sink: (name) =>
+  sink: (_path, name) =>
     callSink((x) =>
       Promise.resolve().then(() => {
         if (pipes[name] != null) {
@@ -98,7 +98,7 @@ const pipeEdgeConstructor = (pipes) => ({
 // graph's completion and send a return value of some kind? Also, rungGraph
 // errors maybe?
 const runEdgeConstructor = (childPromises, context) => ({
-  sink: () =>
+  sink: (_path) =>
     callSink((x) => childPromises.push(
       runGraph(x, context)))
 })
@@ -123,7 +123,7 @@ const runGraph = async (g, context) => {
     pipe: pipeEdgeConstructor(pipes),
     run: runEdgeConstructor(childPromises, derive({ pipes }, context)),
     with: {
-      source: (attrs, ...args) => {
+      source: (_path, attrs, ...args) => {
         return edgeFn(null, ['source', ...args])
           .map(xf => {
             return compose(xf, map(withAttributes(attrs)))
@@ -133,11 +133,11 @@ const runGraph = async (g, context) => {
 
   }, context.edges)
 
-  const edgeFn = (_path, value) => {
+  const edgeFn = (path, value) => {
     const [type, name, ...args] = value
     const edge = edges[name]
     return edge != null && edge[type] != null
-      ? edge[type](...args)
+      ? edge[type](path, ...args)
       : []
   }
   const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })

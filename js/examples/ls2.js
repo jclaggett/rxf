@@ -86,10 +86,10 @@ export const lsGraph = () =>
 
 const edges = {
   dir: {
-    source: (path) => [
+    source: (_path, dirPath) => [
       rxf.transducer(rf => ({
         [rxf.STEP]: async (a, _x) => {
-          const dir = await opendir(path)
+          const dir = await opendir(dirPath)
           for await (const dirent of dir) {
             a = rf[rxf.STEP](a, dirent)
             if (rxf.isReduced(a)) {

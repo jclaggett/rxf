@@ -58,7 +58,7 @@ export const spinner = graph({
 })
 
 const processEdge = {
-  sink: () => [
+  sink: (_path) => [
     rxf.transducer(_ => ({
       [rxf.STEP]: (a, f) => {
         f(process)

@@ -11,7 +11,7 @@ const isSet = isa(Set)
 
 // Graphable Protocol
 const graphable = Symbol('graph')
-export const isGraphable = (x) => isObject(x) && graphable in x
+export const isGraph = (x) => isObject(x) && graphable in x
 
 const Graph = {
   [graphable]: function () { return this }
@@ -82,7 +82,7 @@ const normalizePathInner = (nodes, dir, path) => {
   let newPath = getAliasedPath(nodes, path)
   const [name, ...subpath] = newPath
   const node = nodes[name]
-  if (isGraphable(node)) {
+  if (isGraph(node)) {
     newPath = [
       name,
       ...normalizePathInner(
@@ -208,7 +208,7 @@ export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) => 
     .reduce(addNormalizedLink, g)
 
   g = Object.entries(nodes)
-    .filter(([_, node]) => isGraphable(node))
+    .filter(([_, node]) => isGraph(node))
     .reduce(mergeSubgraph, g)
 
   normalizedLinks
@@ -286,7 +286,8 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
     walked = setIn(walked, path,
       walkFn(
         childPaths.map(path => getIn(walked, path)),
-        getNode(g, path), {
+        getNode(g, path),
+        {
           path,
           graph: g,
           root: rootPathsSet.has(path),

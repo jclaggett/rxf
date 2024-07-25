@@ -6,7 +6,7 @@
 import { $ } from './pathref.js'
 import { composeGraph } from './xfgraph.js'
 import { isVariant, variant } from './util.js'
-import { graph, chain } from './graph.js'
+import { graph, chain, isGraph } from './graph.js'
 
 // edge, source and sink variants
 export const source = variant('source')
@@ -27,19 +27,14 @@ export const iograph = graph
 export const iochain = chain
 
 // IOGraph composition
-const findSources = (nodes) =>
+const findEdges = (isEdge, nodes, ref) =>
   Object.entries(nodes)
     .flatMap(([name, node]) =>
-      isSource(node)
-        ? [$[name]]
-        : [])
-
-const findSinks = (nodes) =>
-  Object.entries(nodes)
-    .flatMap(([name, node]) =>
-      isSink(node)
-        ? [$[name]]
-        : [])
+      isGraph(node)
+        ? findEdges(isEdge, node.nodes, ref[name])
+        : isEdge(node)
+          ? [ref[name]]
+          : [])
 
 /**
  * Compose an iograph (i.e., a graph defined by iograph or iochain) of
@@ -50,6 +45,6 @@ export const composeIOGraph = (g, { rootFn, leafFn }) =>
   composeGraph(g, {
     rootFn,
     leafFn,
-    rootPathRefs: findSources(g.nodes),
-    leafPathRefs: findSinks(g.nodes)
+    rootPathRefs: findEdges(isSource, g.nodes, $),
+    leafPathRefs: findEdges(isSink, g.nodes, $)
   })

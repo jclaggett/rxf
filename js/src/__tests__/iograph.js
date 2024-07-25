@@ -60,14 +60,22 @@ test('iograph works', () => {
       nodes: {
         a: source('a'),
         b: identity,
-        c: sink('c')
+        c: sink('c'),
+        d: iograph({
+          nodes: {
+            a: source('da'),
+            b: identity,
+            c: sink('dc')
+          },
+          links: [[$.a, $.b, $.c]]
+        })
       },
       links: [
         [$.a, $.b],
         [$.b, $.c]
       ]
     }),
-    [['a', 1], ['b', 2], ['a', 3]]
+    [['a', 1], ['b', 2], ['a', 3], ['da', 4]]
   ))
-    .toStrictEqual([['c', 1], ['c', 3], ['c']])
+    .toStrictEqual([['c', 1], ['c', 3], ['dc', 4], ['c'], ['dc']])
 })

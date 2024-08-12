@@ -118,6 +118,12 @@ const withAttributes = (attrNames, attrs) =>
 
 const runGraph = async (g, context) => {
   const childPromises = []
+  const dynamicAttributes = derive(
+    {
+      graph: () => g,
+      initValue: () => context.initValue
+    },
+    basicAttributes)
   const pipes = derive({}, context.pipes)
   const edges = derive({
     pipe: pipeEdgeConstructor(pipes),
@@ -128,7 +134,7 @@ const runGraph = async (g, context) => {
           .map(xf => {
             return compose(
               xf,
-              map(withAttributes(attrNames, basicAttributes)))
+              map(withAttributes(attrNames, dynamicAttributes)))
           })
       }
     }

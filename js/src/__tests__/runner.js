@@ -217,7 +217,7 @@ test('error handling works', async () => {
 test('\'with\' source works', async () => {
   expect(await run(iograph({
     nodes: {
-      a: source('with', ['timestamp', 'rng'], 'init'),
+      a: source('with', ['timestamp', 'rng', 'graph', 'initValue'], 'init'),
       b: takeAll,
       c: sink('debug')
     },

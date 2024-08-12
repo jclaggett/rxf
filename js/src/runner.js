@@ -103,16 +103,16 @@ const runEdgeConstructor = (childPromises, context) => ({
       runGraph(x, context)))
 })
 
-const attributes = {
+const basicAttributes = {
   timestamp: () => Date.now(),
   rng: () => Math.random // Inversion of control is maintained (barely).
 }
 
-const withAttributes = (attrs) =>
+const withAttributes = (attrNames, attrs) =>
   (event) => ({
     ...Object.fromEntries(
-      attrs.map(attr =>
-        [attr, attributes[attr]()])),
+      attrNames.map(attrName =>
+        [attrName, attrs[attrName]()])),
     event
   })
 
@@ -123,10 +123,12 @@ const runGraph = async (g, context) => {
     pipe: pipeEdgeConstructor(pipes),
     run: runEdgeConstructor(childPromises, derive({ pipes }, context)),
     with: {
-      source: (path, attrs, ...args) => {
+      source: (path, attrNames, ...args) => {
         return edgeFn(path, ['source', ...args])
           .map(xf => {
-            return compose(xf, map(withAttributes(attrs)))
+            return compose(
+              xf,
+              map(withAttributes(attrNames, basicAttributes)))
           })
       }
     }

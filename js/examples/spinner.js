@@ -21,7 +21,7 @@ const spinnerString =
 export const spinner = graph({
   nodes: {
     // freq is 30hz
-    time: source('with', ['timestamp'], 'timer', 1000 / 60),
+    time: source('with', ['timestamp', 'initValue'], 'timer', 1000 / 60),
 
     limitedTime: take(600),
 
@@ -53,7 +53,8 @@ export const spinner = graph({
     [$.spinnerIndex, $.spinner],
     // [$.spinnerIndex, $.log],
     [$.spinner, $.streamFn],
-    [$.streamFn, $.stdout]
+    [$.streamFn, $.stdout],
+    [$.limitedTime, $.initValue, $.log]
   ]
 })
 

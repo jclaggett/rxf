@@ -161,7 +161,7 @@ const runGraph = async (g, context) => {
     } catch (e) {
       Promise.resolve().then(() => {
         if (pipes.error == null) {
-          console.log(`Warning! Error was ignored: ${e}`)
+          console.warn(`Warning! Error was ignored: ${e}`)
         } else {
           pipes.error.send(e)
         }

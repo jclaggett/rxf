@@ -116,7 +116,7 @@ const withAttributes = (attrNames, attrs) =>
     event
   })
 
-const runGraph = async (g, context) => {
+const composeRunner = (g, context) => {
   const childPromises = []
   const dynamicAttributes = derive(
     {
@@ -149,29 +149,38 @@ const runGraph = async (g, context) => {
       : []
   }
   const xfs = composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn })
-  const rfs = xfs.map(xf => xf(r.nullReducer))
 
-  // Perform a single asynchronous step across all reducers. Any exceptions
-  // that are raised are expected to be caught by inside the step calls and
-  // forwarded via a generic error source.
-  // NOTE: the accumulator is _always_ null below because nullReducer is used
-  await Promise.all(rfs.map(async rf => {
-    try {
-      await rf[r.STEP](null, context.initValue)
-    } catch (e) {
-      Promise.resolve().then(() => {
-        if (pipes.error == null) {
-          console.warn(`Warning! Error was ignored: ${e}`)
-        } else {
-          pipes.error.send(e)
+  return {
+    start: async () => {
+      // Perform a single asynchronous step across all reducers. Any exceptions
+      // that are raised are expected to be caught by inside the step calls and
+      // forwarded via a generic error source.
+      // NOTE: the accumulator is _always_ null below because nullReducer is used
+      const rfs = xfs.map(xf => xf(r.nullReducer))
+      const sourcePromises = rfs.map(async rf => {
+        try {
+          await rf[r.STEP](null, context.initValue)
+        } catch (e) {
+          Promise.resolve().then(() => {
+            if (pipes.error == null) {
+              console.warn(`Warning! Error was ignored: ${e}`)
+            } else {
+              pipes.error.send(e)
+            }
+          })
         }
+
+        return rf[r.RESULT](null)
       })
+      await Promise.all(sourcePromises)
+      return Promise.all(childPromises)
     }
+  }
+}
 
-    return rf[r.RESULT](null)
-  }))
-
-  await Promise.all(childPromises)
+const runGraph = async (g, context) => {
+  const runner = composeRunner(g, context)
+  await runner.start()
 }
 
 export const run = (g, { initValue = null, edges = {}, pipes = {} } = {}) =>

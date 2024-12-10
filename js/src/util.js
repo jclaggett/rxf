@@ -93,7 +93,7 @@ export const compose = (...fs) => (x) => fs.reduceRight((x, f) => f(x), x)
 /**
   * Alias for Object.setPrototypeOf. Used to 'derive' one object from another so
   * that properties from the derived object are inherited by the returned
-  * object.
+  * object. Handles the special case where x and y are the same.
   * @param {Object} x
   * @param {Object} y
   * @returns {Object}
@@ -105,7 +105,10 @@ export const compose = (...fs) => (x) => fs.reduceRight((x, f) => f(x), x)
   * z.b // 2
   * z.__proto__ === y // true
   */
-export const derive = Object.setPrototypeOf
+export const derive = (x, y) =>
+  x === y
+    ? x
+    : Object.setPrototypeOf(x, y)
 
 /**
   * Returns a predicate that returns true when x is equal to any value in `xs`.

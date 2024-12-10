@@ -7,6 +7,8 @@
 // 1. Prototype inheritance is a low level and optimized javascript feature.
 // 2. The constructor doesn't define proxying INIT, STEP, and RESULT methods.
 
+import { derive } from './util.js'
+
 export const INIT = '@@transducer/init'
 export const STEP = '@@transducer/step'
 export const RESULT = '@@transducer/result'
@@ -19,18 +21,14 @@ export const isReduced = (x) => x instanceof Object && x[REDUCED] === true
 export const ensureReduced = (x) => isReduced(x) ? x : reduced(x)
 export const ensureUnreduced = (x) => isReduced(x) ? unreduced(x) : x
 
-// Builder for transducers. Takes a constructor function which implements the
-// transducer (taking and returing a reducer). The returned reducer then
-// inherits from the given reducer (using prototype inheritance).
-export const transducer = (constructor) =>
-  (reducer) => {
-    const reducer2 = constructor(reducer)
-    return (reducer2 === reducer)
-      ? reducer2
-      : Object.setPrototypeOf(reducer2, reducer)
-  }
+// Convenience builder for transducers. Takes an xf function which implements
+// the transducer (taking and returing a reducer). The returned reducer then
+// derives any unimplemented parts of the reducing protocol from the given
+// reducer (using prototype inheritance).
+export const transducer = (xf) =>
+  (reducer) => derive(xf(reducer), reducer)
 
-// A reduce function that stops when receiving a reduced value.
+// A reduce function that stops early when receiving a reduced value.
 export const reduce = (f, a, vs) => {
   for (const v of vs) {
     a = f(a, v)

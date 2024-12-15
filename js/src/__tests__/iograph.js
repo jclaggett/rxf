@@ -6,7 +6,7 @@ import { identity } from '../util.js'
 import { spread, tag, detag } from '../xflib.js'
 import { transduce, toArray } from '../reducing.js'
 import { $ } from '../pathref'
-import { composeIOGraph, source, sink, iograph, iochain } from '../iograph.js'
+import { composeIOGraph, source, sink } from '../iograph.js'
 
 const edgeFn = (_path, [type, name]) =>
   [(type === 'source' ? detag : tag)(name)]
@@ -17,65 +17,3 @@ const testGraph = (g, inputs) =>
     spread(composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn }))(toArray),
     [],
     inputs)
-
-test('iochain works', () => {
-  expect(testGraph(
-    iochain(),
-    []
-  ))
-    .toStrictEqual([])
-
-  expect(testGraph(
-    iochain(identity),
-    []
-  ))
-    .toStrictEqual([])
-
-  expect(testGraph(
-    iochain(
-      source('a'),
-      identity,
-      sink('b')
-    ),
-    [['a', 1], ['a']]
-  ))
-    .toStrictEqual([['b', 1], ['b']])
-})
-
-test('iograph works', () => {
-  expect(testGraph(
-    iograph(),
-    []
-  ))
-    .toStrictEqual([])
-
-  expect(testGraph(
-    iograph({}),
-    []
-  ))
-    .toStrictEqual([])
-
-  expect(testGraph(
-    iograph({
-      nodes: {
-        a: source('a'),
-        b: identity,
-        c: sink('c'),
-        d: iograph({
-          nodes: {
-            a: source('da'),
-            b: identity,
-            c: sink('dc')
-          },
-          links: [[$.a, $.b, $.c]]
-        })
-      },
-      links: [
-        [$.a, $.b],
-        [$.b, $.c]
-      ]
-    }),
-    [['a', 1], ['b', 2], ['a', 3], ['da', 4]]
-  ))
-    .toStrictEqual([['c', 1], ['c', 3], ['dc', 4], ['c'], ['dc']])
-})

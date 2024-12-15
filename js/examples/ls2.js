@@ -12,7 +12,7 @@ const dirGraph = (
   [dirname, ...dirnames], // active
   { padding, useTitles, showHidden }) => // passive
 
-  rxf.iograph({
+  rxf.graph({
     nodes: {
       entries: source('dir', dirname),
       entryNames: rxf.chain(
@@ -35,7 +35,7 @@ const dirGraph = (
   })
 
 export const lsGraph = () =>
-  rxf.iograph({
+  rxf.graph({
     nodes: {
       // Act 1: Collect configuration and start processing dirnames
       init: source('init'),

@@ -5,7 +5,8 @@
 import { jest } from '@jest/globals'
 import { flatMap, map, take, emit, takeAll } from '../xflib'
 import { $ } from '../pathref'
-import { source, sink, iograph, iochain } from '../iograph.js'
+import { source, sink } from '../iograph.js'
+import { graph, chain } from '../graph.js'
 import { run } from '../runner.js'
 
 beforeAll(() => {
@@ -15,13 +16,13 @@ beforeAll(() => {
 })
 
 test('run works', async () => {
-  expect(await run(iograph()))
+  expect(await run(graph()))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({})))
+  expect(await run(graph({})))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       b: sink('debug')
@@ -30,7 +31,7 @@ test('run works', async () => {
     .toStrictEqual(undefined)
 
   let result = []
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       b: map(x => x.argv[0]),
@@ -46,7 +47,7 @@ test('run works', async () => {
     .toStrictEqual(['hello', process.env.USER])
 
   result = []
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       b: take(0),
@@ -60,7 +61,7 @@ test('run works', async () => {
 })
 
 test('various sources and sinks work', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       bad1: source('badSource'),
       bad2: sink('badSink')
@@ -69,7 +70,7 @@ test('various sources and sinks work', async () => {
   })))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('timer', 0),
       b: take(2),
@@ -80,7 +81,7 @@ test('various sources and sinks work', async () => {
   })))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       b: flatMap(x => [x.env.USER, x.env.HOME]),
@@ -95,7 +96,7 @@ test('various sources and sinks work', async () => {
 })
 
 test('pipes work', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       fooPipe: source('pipe', 'foo'),
@@ -105,7 +106,7 @@ test('pipes work', async () => {
   })))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
       b: flatMap(x => [x.env.USER, x.env.HOME, 43]),
@@ -120,7 +121,7 @@ test('pipes work', async () => {
 })
 
 test('timer works', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('timer', 0),
       b: take(3),
@@ -135,7 +136,7 @@ test('timer works', async () => {
 })
 
 test('missing sources or sinks work', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: take(1),
       b: take(2)
@@ -148,10 +149,10 @@ test('missing sources or sinks work', async () => {
 })
 
 test('run sink works', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('init'),
-      b: emit(iograph({
+      b: emit(graph({
         nodes: {
           a: source('init'),
           b: sink('debug')
@@ -170,8 +171,8 @@ test('run sink works', async () => {
     .toStrictEqual(undefined)
 })
 
-test('iochain works', async () => {
-  expect(await run(iochain(
+test('chain works', async () => {
+  expect(await run(chain(
     source('init'),
     take(0),
     sink('debug')
@@ -181,7 +182,7 @@ test('iochain works', async () => {
 
 test('error handling works', async () => {
   // TODO reset the pipes state between runs!
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       init: source('init'),
       test: map(_ => { throw new Error('Test Error') }),
@@ -196,7 +197,7 @@ test('error handling works', async () => {
   })))
     .toStrictEqual(undefined)
 
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       init: source('init'),
       error: source('pipe', 'error'),
@@ -215,7 +216,7 @@ test('error handling works', async () => {
 })
 
 test('\'with\' source works', async () => {
-  expect(await run(iograph({
+  expect(await run(graph({
     nodes: {
       a: source('with', ['timestamp', 'rng', 'graph', 'initValue'], 'init'),
       b: takeAll,

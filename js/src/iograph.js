@@ -77,12 +77,7 @@ const runEdgeConstructor = (childPromises, context) => ({
       runGraph(x, context)))
 })
 
-const basicAttributes = {
-  timestamp: () => Date.now(),
-  rng: () => Math.random // Inversion of control is maintained (barely).
-}
-
-const withAttributes = (attrNames, attrs) =>
+const applyWithAttrs = (attrNames, attrs) =>
   (event) => ({
     ...Object.fromEntries(
       attrNames.map(attrName =>
@@ -90,31 +85,31 @@ const withAttributes = (attrNames, attrs) =>
     event
   })
 
-
 export const composeIOGraph = (g, context) => {
   const childPromises = []
-  const dynamicAttributes = util.derive(
+  const attrs = util.derive(
     {
       graph: () => g,
       initValue: () => context.initValue
     },
-    basicAttributes)
+    context.attrs)
   const pipes = util.derive({}, context.pipes)
-  const edges = util.derive({
-    pipe: pipeEdgeConstructor(pipes),
-    run: runEdgeConstructor(childPromises, util.derive({ pipes }, context)),
-    with: {
-      source: (path, attrNames, ...args) => {
-        return edgeFn(path, ['source', ...args])
-          .map(xf => {
-            return util.compose(
-              xf,
-              xflib.map(withAttributes(attrNames, dynamicAttributes)))
-          })
+  const edges = util.derive(
+    {
+      pipe: pipeEdgeConstructor(pipes),
+      run: runEdgeConstructor(childPromises, util.derive({ pipes }, context)),
+      with: {
+        source: (path, attrNames, ...args) => {
+          return edgeFn(path, ['source', ...args])
+            .map(xf => {
+              return util.compose(
+                xf,
+                xflib.map(applyWithAttrs(attrNames, attrs)))
+            })
+        }
       }
-    }
-
-  }, context.edges)
+    },
+    context.edges)
 
   const edgeFn = (path, value) => {
     const [type, name, ...args] = value
@@ -157,4 +152,3 @@ export const composeIOGraph = (g, context) => {
     }
   }
 }
-

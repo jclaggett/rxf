@@ -51,14 +51,26 @@ export const basicEdges = {
   }
 }
 
+const basicAttrs = {
+  timestamp: () => Date.now(),
+  rng: () => Math.random // Inversion of control is maintained (barely).
+}
+
 const runGraph = async (g, context) => {
   const runner = iog.composeIOGraph(g, context)
   await runner.start()
 }
 
-export const run = (g, { initValue = null, edges = {}, pipes = {} } = {}) =>
+export const run = (g,
+  {
+    initValue = null,
+    edges = {},
+    attrs = {},
+    pipes = {}
+  } = {}) =>
   runGraph(g, {
     initValue,
     edges: derive(edges, basicEdges),
-    pipes
+    attrs: derive(attrs, basicAttrs),
+    pipes,
   })

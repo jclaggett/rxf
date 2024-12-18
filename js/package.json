@@ -20,6 +20,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "coverage": "function _ { NODE_OPTIONS=--experimental-vm-modules jest --coverage --collectCoverageFrom \"src/${1:-*}*\" $* ; }; _",
     "lint": "eslint src"
   },
   "devDependencies": {

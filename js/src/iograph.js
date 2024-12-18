@@ -16,16 +16,6 @@ export const isSource = util.isVariant('source')
 export const sink = util.variant('sink')
 export const isSink = util.isVariant('sink')
 
-// IOGraph composition
-const findEdges = (isEdge, nodes, ref) =>
-  Object.entries(nodes)
-    .flatMap(([name, node]) =>
-      isGraph(node)
-        ? findEdges(isEdge, node.nodes, ref[name])
-        : isEdge(node)
-          ? [ref[name]]
-          : [])
-
 // Special 'sink' transducer that calls f(x) each STEP without calling down to the next STEP.
 // f(x) is assumed to perform a side effect of some kind.
 export const callSink = (f) => [
@@ -85,6 +75,16 @@ const applyWithAttrs = (attrNames, attrs) =>
     event
   })
 
+// IOGraph composition
+const findEdges = (isEdge, nodes, ref) =>
+  Object.entries(nodes)
+    .flatMap(([name, node]) =>
+      isGraph(node)
+        ? findEdges(isEdge, node.nodes, ref[name])
+        : isEdge(node)
+          ? [ref[name]]
+          : [])
+
 export const composeIOGraph = (g, context) => {
   const childPromises = []
   const attrs = util.derive(
@@ -125,30 +125,36 @@ export const composeIOGraph = (g, context) => {
       rootPathRefs: findEdges(isSource, g.nodes, $),
       leafPathRefs: findEdges(isSink, g.nodes, $)
     })
-  return {
-    start: async () => {
-      // Perform a single asynchronous step across all reducers. Any exceptions
-      // that are raised are expected to be caught by inside the step calls and
-      // forwarded via a generic error source.
-      // NOTE: the accumulator is _always_ null below because nullReducer is used
-      const rfs = xfs.map(xf => xf(r.nullReducer))
-      const sourcePromises = rfs.map(async rf => {
-        try {
-          await rf[r.STEP](null, context.initValue)
-        } catch (e) {
-          Promise.resolve().then(() => {
-            if (pipes.error == null) {
-              console.warn(`Warning! Error was ignored: ${e}`)
-            } else {
-              pipes.error.send(e)
-            }
-          })
-        }
 
-        return rf[r.RESULT](null)
-      })
-      await Promise.all(sourcePromises)
-      return Promise.all(childPromises)
-    }
+  const inst = { isRunning: false }
+  inst.start = async () => {
+    // Perform a single asynchronous step across all reducers. Any exceptions
+    // that are raised are expected to be caught by inside the step calls and
+    // forwarded via a generic error source.
+    // NOTE: the accumulator is _always_ null below because nullReducer is used
+    const rfs = xfs.map(xf => xf(r.nullReducer))
+    const sourcePromises = rfs.map(async rf => {
+      try {
+        await rf[r.STEP](null, context.initValue)
+      } catch (e) {
+        Promise.resolve().then(() => {
+          if (pipes.error == null) {
+            console.warn(`Warning! Error was ignored: ${e}`)
+          } else {
+            pipes.error.send(e)
+          }
+        })
+      }
+
+      return rf[r.RESULT](null)
+    })
+    inst.isRunning = true
+    await Promise.all(sourcePromises)
+    await Promise.all(childPromises)
+    inst.isRunning = false
   }
+  inst.stop = () => {
+  }
+
+  return inst
 }

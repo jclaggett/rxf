@@ -28,7 +28,7 @@ export const callSink = (f) => [
 ]
 
 const pipeEdgeConstructor = (pipes) => ({
-  source: (_path, name) => [
+  source: ({ stopPromise }, name) => [
     r.transducer(rf => {
       return {
         [r.STEP]: async (a, _x) => {
@@ -43,13 +43,14 @@ const pipeEdgeConstructor = (pipes) => ({
               }
             }
             pipes[name] = { close, send }
+            stopPromise.then(close)
           })
           return a
         }
       }
     })
   ],
-  sink: (_path, name) =>
+  sink: (_, name) =>
     callSink((x) =>
       Promise.resolve().then(() => {
         if (pipes[name] != null) {
@@ -62,9 +63,12 @@ const pipeEdgeConstructor = (pipes) => ({
 // graph's completion and send a return value of some kind? Also, rungGraph
 // errors maybe?
 const runEdgeConstructor = (childPromises, context) => ({
-  sink: (_path) =>
-    callSink((x) => childPromises.push(
-      runGraph(x, context)))
+  sink: ({ stopPromise }) =>
+    callSink((g) => {
+      const runner = composeIOGraph(g, context)
+      stopPromise.then(runner.stop)
+      childPromises.push(runner.start())
+    })
 })
 
 const applyWithAttrs = (attrNames, attrs) =>
@@ -86,6 +90,10 @@ const findEdges = (isEdge, nodes, ref) =>
           : [])
 
 export const composeIOGraph = (g, context) => {
+  let resolveStopPromise = null
+  const stopPromise = new Promise((resolve) => {
+    resolveStopPromise = resolve
+  })
   const childPromises = []
   const attrs = util.derive(
     {
@@ -99,8 +107,8 @@ export const composeIOGraph = (g, context) => {
       pipe: pipeEdgeConstructor(pipes),
       run: runEdgeConstructor(childPromises, util.derive({ pipes }, context)),
       with: {
-        source: (path, attrNames, ...args) => {
-          return edgeFn(path, ['source', ...args])
+        source: (edgeContext, attrNames, ...args) => {
+          return edgeFn(edgeContext, ['source', ...args])
             .map(xf => {
               return util.compose(
                 xf,
@@ -115,7 +123,7 @@ export const composeIOGraph = (g, context) => {
     const [type, name, ...args] = value
     const edge = edges[name]
     return edge != null && edge[type] != null
-      ? edge[type](path, ...args)
+      ? edge[type]({ path, stopPromise }, ...args)
       : []
   }
   const xfs =
@@ -126,7 +134,7 @@ export const composeIOGraph = (g, context) => {
       leafPathRefs: findEdges(isSink, g.nodes, $)
     })
 
-  const inst = { isRunning: false }
+  const inst = { isRunning: false, stop: resolveStopPromise }
   inst.start = async () => {
     // Perform a single asynchronous step across all reducers. Any exceptions
     // that are raised are expected to be caught by inside the step calls and
@@ -152,8 +160,6 @@ export const composeIOGraph = (g, context) => {
     await Promise.all(sourcePromises)
     await Promise.all(childPromises)
     inst.isRunning = false
-  }
-  inst.stop = () => {
   }
 
   return inst

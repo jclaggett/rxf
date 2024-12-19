@@ -4,7 +4,7 @@
 
 import { jest } from '@jest/globals'
 import { $ } from '../pathref'
-import { graph, walkGraph, chain, pg } from '../graph'
+import { graph, isGraph, ensureGraph, walkGraph, chain, pg } from '../graph'
 
 const s = (...args) => new Set(args)
 
@@ -116,6 +116,21 @@ test('subpath into non-graph node fails', () => {
     ]
   }))
     .toThrow()
+})
+
+test('isGraph works', () => {
+  expect(isGraph(null))
+    .toStrictEqual(false)
+  expect(isGraph(graph()))
+    .toStrictEqual(true)
+})
+
+test('ensureGraph works', () => {
+  expect(isGraph(ensureGraph({})))
+    .toStrictEqual(true)
+  const g = graph()
+  expect(g === ensureGraph(g))
+    .toStrictEqual(true)
 })
 
 test('cycles in graph to fail', () => {

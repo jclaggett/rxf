@@ -187,7 +187,7 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
 }
 
 /**
- * return partitions of `arr` each `size` long with `step` distance between their first value.
+ * Return partitions of `arr` each `size` long with `step` distance between their first value.
  */
 const partition = (arr, size, step) => {
   const partitions = []
@@ -196,6 +196,12 @@ const partition = (arr, size, step) => {
   }
   return partitions
 }
+
+/**
+ * Return a normalized graph given an object containing nodes and links. Nodes
+ * may be subgraphs, aliases to other nodes or any other arbitrary value. Links
+ * are arrays of path references.
+ */
 
 export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) => {
   let g = derive({ nodes, links, in: {}, out: {} }, Graph)
@@ -218,8 +224,15 @@ export const graph = ({ nodes = {}, links = [] } = { nodes: {}, links: [] }) => 
   return g
 }
 
-// chain: return a graph of values chained together with 'in' and 'out' nodes
-// at the top and bottom. Very similar to `compose`.
+/**
+ * Ensure the given object has been normalized into a graph object.
+ */
+export const ensureGraph = (x) => isGraph(x) ? x : graph(x)
+
+/**
+* Return a simple graph of nodes chained together with 'in' and 'out' nodes at
+* the top and bottom. Very similar to `compose`.
+*/
 export const chain = (...nodes) =>
   graph({
     nodes: {
@@ -253,6 +266,7 @@ export const chain = (...nodes) =>
  *
  */
 export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
+  g = ensureGraph(g)
   const rootDir = leafDir === 'out' ? 'in' : 'out'
 
   const rootPaths = rootPathRefs

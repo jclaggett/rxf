@@ -5,10 +5,10 @@
 
 import { $ } from './pathref.js'
 import * as util from './util.js'
-import * as xflib from './xflib.js'
 import * as r from './reducing.js'
-import { composeGraph } from './xfgraph.js'
-import { isGraph } from './graph.js'
+import * as xflib from './xflib.js'
+import * as xfgraph from './xfgraph.js'
+import * as graph from './graph.js'
 
 // edge, source and sink variants
 export const source = util.variant('source')
@@ -65,7 +65,7 @@ const pipeEdgeConstructor = (pipes) => ({
 const runEdgeConstructor = (childPromises, context) => ({
   sink: ({ stopPromise }) =>
     callSink((g) => {
-      const runner = composeIOGraph(g, context)
+      const runner = iograph(g, context)
       stopPromise.then(runner.stop)
       childPromises.push(runner.start())
     })
@@ -83,13 +83,14 @@ const applyWithAttrs = (attrNames, attrs) =>
 const findEdges = (isEdge, nodes, ref) =>
   Object.entries(nodes)
     .flatMap(([name, node]) =>
-      isGraph(node)
+      graph.isGraph(node)
         ? findEdges(isEdge, node.nodes, ref[name])
         : isEdge(node)
           ? [ref[name]]
           : [])
 
-export const composeIOGraph = (g, context) => {
+export const iograph = (g, context) => {
+  g = graph.ensureGraph(g)
   let resolveStopPromise = null
   const stopPromise = new Promise((resolve) => {
     resolveStopPromise = resolve
@@ -127,7 +128,7 @@ export const composeIOGraph = (g, context) => {
       : []
   }
   const xfs =
-    composeGraph(g, {
+    xfgraph.composeGraph(g, {
       rootFn: edgeFn,
       leafFn: edgeFn,
       rootPathRefs: findEdges(isSource, g.nodes, $),

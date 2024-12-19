@@ -72,5 +72,5 @@ export const run = (g,
     initValue,
     edges: derive(edges, basicEdges),
     attrs: derive(attrs, basicAttrs),
-    pipes,
+    pipes
   })

@@ -50,9 +50,7 @@ test('composeIOGraph', async () => {
     ]
   }
 
-  const gVal = graph.graph(gDef)
-
-  const gRun = iograph.composeIOGraph(gVal, {
+  const gRun = iograph.iograph(gDef, {
     initValue: 42,
     attrs: {},
     pipes: {},

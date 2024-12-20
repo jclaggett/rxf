@@ -19,15 +19,12 @@ const newPathRef = (path) => {
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) => {
       return options.stylize(renderPath(path), 'special')
     },
-    [Symbol.iterator]: () => path[Symbol.iterator]()
+    [Symbol.toPrimitive]: () => renderPath(path),
+    [Symbol.iterator]: () => path[Symbol.iterator](),
   }
 
   const ref = new Proxy(internalObject, {
     get: (subpaths, prop) => {
-      // Handle rendering as a string
-      if (prop === Symbol.toPrimitive) {
-        return () => renderPath(path)
-      }
       if (!(prop in subpaths)) {
         subpaths[prop] = newPathRef([...path, prop])
       }

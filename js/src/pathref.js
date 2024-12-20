@@ -18,8 +18,10 @@ const newPathRef = (path) => {
   const internalObject = {
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) => {
       return options.stylize(renderPath(path), 'special')
-    }
+    },
+    [Symbol.iterator]: () => path[Symbol.iterator]()
   }
+
   const ref = new Proxy(internalObject, {
     get: (subpaths, prop) => {
       // Handle rendering as a string
@@ -32,6 +34,7 @@ const newPathRef = (path) => {
       return subpaths[prop]
     }
   })
+
   pathRefs.set(ref, path)
   return ref
 }
@@ -74,3 +77,5 @@ export const arrayToPathRef = ([name, ...path], pathRef = $) =>
  */
 export const arrayViaPathRef = (x, pathRef = $) =>
   pathRefToArray(arrayToPathRef(x, pathRef))
+
+export default $

@@ -43,3 +43,10 @@ test('pathref custom printing', () => {
   expect($.a.b.c[Symbol.for('nodejs.util.inspect.custom')](0, { stylize: (x) => x }))
     .toStrictEqual('$.a.b.c')
 })
+
+test('pathref as iterator', () => {
+  expect([...$[0][1][2]])
+    .toStrictEqual(['0', '1', '2'])
+  expect([...$.a.b.c])
+    .toStrictEqual(['a', 'b', 'c'])
+})

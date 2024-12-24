@@ -2,26 +2,13 @@
 // 1. Coverage report should be at 100% when testing only this file.
 // 2. Tests should be defined only in terms of the public API.
 
-import { identity } from '../util.js'
-import { spread, tag, detag } from '../xflib.js'
-import { transduce, toArray } from '../reducing.js'
 import { $ } from '../pathref'
-import * as graph from '../graph.js'
-import * as util from '../util.js'
 import * as r from '../reducing.js'
+import * as xflib from '../xflib.js'
+import * as graph from '../graph.js'
 import * as iograph from '../iograph.js'
 
-const edgeFn = (_path, [type, name]) =>
-  [(type === 'source' ? detag : tag)(name)]
-
-// Implicitly test composeIOGraph by using it to test iochain and iograph
-const testGraph = (g, inputs) =>
-  transduce(
-    spread(composeIOGraph(g, { rootFn: edgeFn, leafFn: edgeFn }))(toArray),
-    [],
-    inputs)
-
-test('source and sink', () => {
+test('source and sink both work', () => {
   const source1 = iograph.source('source1', 42)
   const sink1 = iograph.sink('sink1', 43)
   expect(iograph.isSource(source1))
@@ -30,7 +17,7 @@ test('source and sink', () => {
   expect(!iograph.isSink(source1))
 })
 
-test('callSink', () => {
+test('callSink works', () => {
   let x = 2
   const cs = iograph.callSink(y => x += y)
   const callReducer = cs[0](r.nullReducer)
@@ -39,14 +26,39 @@ test('callSink', () => {
   expect(x).toStrictEqual(5)
 })
 
-test('composeIOGraph', async () => {
+test('iograph works', async () => {
+  let outValue = 0
   const gDef = {
     nodes: {
-      a: iograph.source('pipe', 'a'),
-      b: iograph.sink('pipe', 'b')
+      init: graph.graph({
+        nodes: {
+          in: iograph.source('init'),
+          out: $.in
+        },
+        links: []
+      }),
+      pipe1Source: iograph.source(
+        'with', ['graph', 'initValue'],
+        'pipe', 1),
+      pipe2Source: iograph.source('pipe', 2),
+      extractEventValue: xflib.map(({ event }) => event),
+      append44: xflib.append(44),
+      take1: xflib.take(1),
+      setOutValue: iograph.sink('call', x => outValue = x),
+      pipe2Sink: iograph.sink('pipe', 2),
+      pipe3Sink: iograph.sink('pipe', 3),
+
+      bogusSource: iograph.source('bogus'),
+      bogusSink: iograph.sink('bogus')
+
     },
     links: [
-      [$.a, $.b]
+      [$.init, $.append44],
+      [$.pipe1Source, $.extractEventValue, $.append44],
+      [$.pipe1Source, $.pipe2Sink],
+      [$.append44, $.setOutValue],
+      [$.pipe2Source, $.take1, $.pipe3Sink],
+      [$.bogusSource, $.bogusSink],
     ]
   }
 
@@ -56,12 +68,94 @@ test('composeIOGraph', async () => {
     pipes: {},
     edges: {}
   })
-
   expect(gRun.isRunning).toStrictEqual(false)
+  expect(outValue).toStrictEqual(0)
+  expect(gRun.pipes[1]).toBeUndefined()
+  expect(gRun.pipes[2]).toBeUndefined()
+  expect(gRun.pipes[3]).toBeUndefined()
+
   const p = gRun.start()
   expect(gRun.isRunning).toStrictEqual(true)
+  expect(outValue).toStrictEqual(42)
+  expect(gRun.pipes[1]).toBeDefined()
+  expect(gRun.pipes[2]).toBeDefined()
+
+  gRun.pipes[1].send(43)
+  // wait for the send (and underlying pipe promises) to complete
+  await new Promise(resolve => resolve())
+  expect(outValue).toStrictEqual(43)
   expect(p).toBeInstanceOf(Promise)
+  expect(gRun.pipes[2]).toBeUndefined()
+
   gRun.stop()
   await p
   expect(gRun.isRunning).toStrictEqual(false)
+  expect(outValue).toStrictEqual(44)
+  expect(gRun.pipes[1]).toBeUndefined()
+  expect(gRun.pipes[2]).toBeUndefined()
+  expect(gRun.pipes[3]).toBeUndefined()
+})
+
+test('iograph child graphs work', async () => {
+  let outValue = {}
+  const childGraphDef = (i) => ({
+    nodes: {
+      init: iograph.source('init'),
+      out: iograph.sink('call', x => outValue[i] = x)
+    },
+    links: [
+      [$.init, $.out]
+    ]
+  })
+  const gDef = {
+    nodes: {
+      init: iograph.source('init'),
+      genValues: xflib.mapcat(_ => [1, 2, 3, 4]),
+      childgraphs: xflib.map(childGraphDef),
+      runSink: iograph.sink('run')
+    },
+    links: [
+      [$.init, $.genValues, $.childgraphs, $.runSink]
+    ]
+  }
+
+  const gRun = iograph.iograph(gDef)
+  await gRun.start()
+  expect(outValue)
+    .toStrictEqual({ 1: null, 2: null, 3: null, 4: null })
+})
+
+test('iograph error handling works', async () => {
+  const gDef = {
+    nodes: {
+      init: iograph.source('init'),
+      error: iograph.sink('call', () => { throw new Error('test error') })
+    },
+    links: [
+      [$.init, $.error]
+    ]
+  }
+  const gRun = iograph.iograph(gDef)
+  await gRun.start()
+
+  const outValue = {}
+  const gDefErrorHandling = {
+    nodes: {
+      init: iograph.source('init'),
+      error: iograph.sink('call', () => { throw new Error('test error') }),
+
+      err: iograph.source('pipe', 'error'),
+      out: iograph.sink('call', x => outValue['error'] = x)
+    },
+    links: [
+      [$.init, $.error],
+      [$.err, $.out]
+    ]
+  }
+  const gRunEH = iograph.iograph(gDefErrorHandling)
+  const p = gRunEH.start()
+  // wait for the graph to call init
+  await new Promise(resolve => resolve())
+  gRunEH.stop()
+  await p
 })

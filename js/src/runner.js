@@ -9,24 +9,12 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 export const basicEdges = {
 
-  init: {
-    source: (_path) => [
-      r.transducer(rf => ({
-        [r.STEP]: async (a, x) => rf[r.STEP](a, x)
-      }))
-    ]
-  },
-
   debug: {
     sink: (_path) => iog.callSink(console.debug)
   },
 
   log: {
     sink: (_path) => iog.callSink(console.log)
-  },
-
-  call: {
-    sink: (_path, f) => iog.callSink(f)
   },
 
   timer: {

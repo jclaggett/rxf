@@ -1,4 +1,4 @@
-# rxf
+# R×F
 Reactive (rx) Transducer (xf) Framework (f)
 
 ## Usage

@@ -27,7 +27,7 @@ export const callSink = (f) => [
   }))
 ]
 
-const pipeEdgeConstructor = (pipes) => ({
+const pipeEdgeConstructor = (pipes, pipeIn) => ({
   source: ({ stopPromise }, name) => [
     r.transducer(rf => {
       return {
@@ -51,12 +51,7 @@ const pipeEdgeConstructor = (pipes) => ({
     })
   ],
   sink: (_, name) =>
-    callSink((x) =>
-      Promise.resolve().then(() => {
-        if (pipes[name] != null) {
-          pipes[name].send(x)
-        }
-      }))
+    callSink((x) => pipeIn(name, x))
 })
 
 const applyWithAttrs = (attrNames, attrs) =>
@@ -99,13 +94,21 @@ export const iograph = (
       initValue: () => initValue
     },
     attrs)
-  const pipes2 = util.derive(
+  pipes = util.derive(
     {},
     pipes)
+  const pipeIn = async (name, x) => {
+    return Promise.resolve().then(() => {
+      if (pipes[name] != null) {
+        pipes[name].send(x)
+      }
+    })
+  }
+
   edges = util.derive(
     {
       init: {
-        source: (_path) => [
+        source: (_) => [
           r.transducer(rf => ({
             [r.STEP]: async (a, x) => rf[r.STEP](a, x)
           }))
@@ -122,13 +125,20 @@ export const iograph = (
         }
       },
       call: {
-        sink: (_, f) => callSink(f)
+        sink: (_, f) => [
+          r.transducer(_rf => ({
+            [r.STEP]: (a, x) => {
+              f(x, pipeIn)
+              return a
+            }
+          }))
+        ]
       },
-      pipe: pipeEdgeConstructor(pipes2),
+      pipe: pipeEdgeConstructor(pipes, pipeIn),
       run: {
         sink: ({ }) =>
           callSink((g) => {
-            const runner = iograph(g, { initValue, attrs, pipes: pipes2, edges })
+            const runner = iograph(g, { initValue, attrs, pipes, edges })
             stopPromise.then(runner.stop)
             childPromises.push(runner.start())
           })
@@ -140,7 +150,7 @@ export const iograph = (
     const [type, name, ...args] = value
     const edge = edges[name]
     return edge != null && edge[type] != null
-      ? edge[type]({ path, stopPromise }, ...args)
+      ? edge[type]({ path, stopPromise, pipes }, ...args)
       : []
   }
   const xfs =
@@ -154,23 +164,24 @@ export const iograph = (
   const inst = {
     isRunning: false,
     stop: resolveStopPromise,
-    pipes: pipes2
+    pipes: pipes
   }
   inst.start = async () => {
     // Perform a single asynchronous step across all reducers. Any exceptions
     // that are raised are expected to be caught by inside the step calls and
     // forwarded via a generic error source.
-    // NOTE: the accumulator is _always_ null below because nullReducer is used
+    // NOTE: the accumulator is _always_ null below because nullReducer is
+    // always the base reducer used.
     const rfs = xfs.map(xf => xf(r.nullReducer))
     const sourcePromises = rfs.map(async rf => {
       try {
         await rf[r.STEP](null, initValue)
       } catch (e) {
         Promise.resolve().then(() => {
-          if (pipes2.error == null) {
+          if (pipes.error == null) {
             console.warn(`Warning! Error was ignored: ${e}`)
           } else {
-            pipes2.error.send(e)
+            pipes.error.send(e)
           }
         })
       }

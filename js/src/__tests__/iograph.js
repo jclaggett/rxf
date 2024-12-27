@@ -159,3 +159,28 @@ test('iograph error handling works', async () => {
   gRunEH.stop()
   await p
 })
+
+test('iograph call sinks can use pipeIn parameter.', async () => {
+  let outValue = null
+  const gDef = {
+    nodes: {
+      init: iograph.source('init'),
+      call: iograph.sink('call',
+        (x, pipeIn) => pipeIn('pipe', x + 1)),
+
+      pipeSource: iograph.source('pipe', 'pipe'),
+      out: iograph.sink('call', x => outValue = x)
+    },
+    links: [
+      [$.init, $.call],
+      [$.pipeSource, $.out]
+    ]
+  }
+  const gRun = iograph.iograph(gDef, { initValue: 42 })
+  const p = gRun.start()
+  // wait for the graph to call init
+  await new Promise(resolve => resolve())
+  gRun.stop()
+  await p
+  expect(outValue).toStrictEqual(43)
+})

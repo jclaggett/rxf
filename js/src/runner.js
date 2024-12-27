@@ -45,7 +45,7 @@ const basicAttrs = {
 }
 
 const runGraph = async (g, context) => {
-  const runner = iog.composeIOGraph(g, context)
+  const runner = iog.iograph(g, context)
   await runner.start()
 }
 

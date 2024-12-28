@@ -27,7 +27,7 @@ export const callSink = (f) => [
   }))
 ]
 
-const pipeEdgeConstructor = (pipes, pipeIn) => ({
+const pipeEdgeConstructor = (pipes, input) => ({
   source: ({ stopPromise }, name) => [
     r.transducer(rf => {
       return {
@@ -51,7 +51,7 @@ const pipeEdgeConstructor = (pipes, pipeIn) => ({
     })
   ],
   sink: (_, name) =>
-    callSink((x) => pipeIn(name, x))
+    callSink(input(name))
 })
 
 const applyWithAttrs = (attrNames, attrs) =>
@@ -97,13 +97,14 @@ export const iograph = (
   pipes = util.derive(
     {},
     pipes)
-  const pipeIn = async (name, x) => {
-    return Promise.resolve().then(() => {
-      if (pipes[name] != null) {
-        pipes[name].send(x)
-      }
-    })
-  }
+  const input =
+    (name) =>
+      (x) =>
+        Promise.resolve().then(() => {
+          if (pipes[name] != null) {
+            pipes[name].send(x)
+          }
+        })
 
   edges = util.derive(
     {
@@ -128,13 +129,13 @@ export const iograph = (
         sink: (_, f) => [
           r.transducer(_rf => ({
             [r.STEP]: (a, x) => {
-              f(x, pipeIn)
+              f(x, input)
               return a
             }
           }))
         ]
       },
-      pipe: pipeEdgeConstructor(pipes, pipeIn),
+      pipe: pipeEdgeConstructor(pipes, input),
       run: {
         sink: ({ }) =>
           callSink((g) => {

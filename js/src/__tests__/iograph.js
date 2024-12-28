@@ -160,13 +160,13 @@ test('iograph error handling works', async () => {
   await p
 })
 
-test('iograph call sinks can use pipeIn parameter.', async () => {
+test('iograph call sinks can use input parameter.', async () => {
   let outValue = null
   const gDef = {
     nodes: {
       init: iograph.source('init'),
       call: iograph.sink('call',
-        (x, pipeIn) => pipeIn('pipe', x + 1)),
+        (x, input) => input('pipe')(x + 1)),
 
       pipeSource: iograph.source('pipe', 'pipe'),
       out: iograph.sink('call', x => outValue = x)

@@ -2,7 +2,7 @@ import { compose, derive, isEmpty, last, isa, first } from './util.js'
 import * as r from './reducing.js'
 import * as xf from './xflib.js'
 import {
-  $, pathRefToArray, pathRefToString, arrayViaPathRef, isPathRef, arrayToPathRef
+  $, pathRefToArray, arrayViaPathRef, isPathRef, arrayToPathRef
 } from './pathref.js'
 
 const isObject = isa(Object)
@@ -14,7 +14,7 @@ const graphable = Symbol('graph')
 export const isGraph = (x) => isObject(x) && graphable in x
 
 const Graph = {
-  [graphable]: function () { return this }
+  [graphable]: function() { return this }
 }
 
 export const getGraph = (x) =>
@@ -111,12 +111,12 @@ const normalizePath = (nodes, dir, path) => {
 const normalizeLink = ([srcPathRef, dstPathRef], nodes) => {
   const srcPath = normalizePath(nodes, 'out', pathRefToArray(srcPathRef))
   if (isBadPath(srcPath)) {
-    throw new Error(`Invalid source ref: ${pathRefToString(srcPathRef)}`)
+    throw new Error(`Invalid source ref: ${srcPathRef}`)
   }
 
   const dstPath = normalizePath(nodes, 'in', pathRefToArray(dstPathRef))
   if (isBadPath(dstPath)) {
-    throw new Error(`Invalid destination ref: ${pathRefToString(dstPathRef)}`)
+    throw new Error(`Invalid destination ref: ${dstPathRef}`)
   }
   return [srcPath, dstPath]
 }
@@ -172,7 +172,7 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
           compose(
             xf.dropWhile(path => path !== subpath),
             xf.append(subpath),
-            xf.map(path => pathRefToString(arrayToPathRef(path))),
+            xf.map(path => arrayToPathRef(path)),
             xf.interpose(' -> ')
           )(r.sum),
           '',
@@ -273,7 +273,7 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
     .map(pathRef => {
       const path = normalizePath(g.nodes, rootDir, pathRefToArray(pathRef))
       if (isBadPath(path)) {
-        throw new Error(`Invalid rootPathRef: ${pathRefToString(pathRef)}`)
+        throw new Error(`Invalid rootPathRef: ${pathRef}`)
       }
       return path
     })
@@ -282,7 +282,7 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
     .map(pathRef => {
       const path = normalizePath(g.nodes, leafDir, pathRefToArray(pathRef))
       if (isBadPath(path)) {
-        throw new Error(`Invalid leafPathRef: ${pathRefToString(pathRef)}`)
+        throw new Error(`Invalid leafPathRef: ${pathRef}`)
       }
       return path
     })

@@ -23,9 +23,8 @@ const renderPath = (path) =>
 
 const newPathRef = (path) => {
   const internalObject = {
-    [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) => {
-      return options.stylize(renderPath(path), 'special')
-    },
+    [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
+      options.stylize(renderPath(path), 'special'),
     [Symbol.toPrimitive]: () => renderPath(path),
     [Symbol.iterator]: () => path[Symbol.iterator](),
   }
@@ -54,15 +53,6 @@ export const derefPathRef = (x) =>
 export const pathRefToArray = (x) =>
   isPathRef(x)
     ? derefPathRef(x)
-    : x
-
-/**
- * Return a string representing a pathRef. Consider just using
- * `String(x)` or `${x}`
- */
-export const pathRefToString = (x) =>
-  isPathRef(x)
-    ? String(x)
     : x
 
 /**

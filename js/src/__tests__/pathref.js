@@ -1,5 +1,5 @@
 import {
-  $, pathRefToArray, pathRefToString, arrayToPathRef, arrayViaPathRef
+  $, pathRefToArray, arrayToPathRef, arrayViaPathRef
 } from '../pathref'
 
 test('pathrefs', () => {
@@ -15,7 +15,7 @@ test('pathrefs', () => {
     .toStrictEqual(true)
   expect(pathRefToArray(a.b.c) === pathRefToArray(b.c))
     .toStrictEqual(true)
-  expect(pathRefToString(a.b.c))
+  expect(String(a.b.c))
     .toStrictEqual('$.a.b.c')
   expect(arrayToPathRef(['a', 'b', 'c']))
     .toBe($.a.b.c)
@@ -23,8 +23,6 @@ test('pathrefs', () => {
     .toBe($.a[2].c)
   expect(pathRefToArray(42))
     .toStrictEqual(42)
-  expect(pathRefToString(true))
-    .toStrictEqual(true)
   expect(arrayViaPathRef(['a', 'b', 'c']))
     .toBe(arrayViaPathRef(['a', 'b', 'c']))
 })

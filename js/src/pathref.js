@@ -4,6 +4,13 @@ const pathRefs = new WeakMap()
 const isDottedLiteral = (x) => /^[$a-zA-Z_][a-zA-Z0-9_]*$/.test(x)
 const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
 
+/**
+  * Return a string representation of a path. This is used to implement the
+  * `Symbol.for('nodejs.util.inspect.custom')` method for pathRefs.
+
+  * @param {Array} path - The path to render.
+  * @returns {String} A string representation of the path.
+  */
 const renderPath = (path) =>
   '$' + path
     .map(x =>

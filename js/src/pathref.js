@@ -22,12 +22,13 @@ const renderPath = (path) =>
     .join('')
 
 const newPathRef = (path) => {
-  const internalObject = {
+  const internalObject = Object.assign(() => path, {
+    [Symbol.toStringTag]: 'PathRef',
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
       options.stylize(renderPath(path), 'special'),
     [Symbol.toPrimitive]: () => renderPath(path),
     [Symbol.iterator]: () => path[Symbol.iterator](),
-  }
+  })
 
   const ref = new Proxy(internalObject, {
     get: (subpaths, prop) => {

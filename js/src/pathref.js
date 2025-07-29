@@ -1,6 +1,3 @@
-// All pathRefs defined will be stored in the following WeakMap.
-const pathRefs = new WeakMap()
-
 const isDottedLiteral = (x) => /^[$a-zA-Z_][a-zA-Z0-9_]*$/.test(x)
 const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
 
@@ -21,7 +18,7 @@ const renderPath = (path) =>
           : `['${x}']`)
     .join('')
 
-const subpaths = Symbol('subpaths')
+const pathRefs = Symbol('pathRefs')
 export const newPathRef = (path) => {
   const internalObject = Object.assign((...colls) => {
     if (colls.length === 0) {
@@ -38,7 +35,7 @@ export const newPathRef = (path) => {
       options.stylize(renderPath(path), 'special'),
     [Symbol.toPrimitive]: () => renderPath(path),
     [Symbol.iterator]: () => path[Symbol.iterator](),
-    [subpaths]: new Map()
+    [pathRefs]: new Map()
   })
 
   const ref = new Proxy(internalObject, {
@@ -47,24 +44,22 @@ export const newPathRef = (path) => {
         return obj[prop]
       }
 
-      if (!obj[subpaths].has(prop)) {
-        obj[subpaths].set(prop, newPathRef([...path, prop]))
+      if (!obj[pathRefs].has(prop)) {
+        obj[pathRefs].set(prop, newPathRef([...path, prop]))
       }
-      return obj[subpaths].get(prop)
+      return obj[pathRefs].get(prop)
     }
   })
 
-  pathRefs.set(ref, path)
   return ref
 }
 
 export const $ = newPathRef([])
 
 export const isPathRef = (x) =>
-  pathRefs.has(x)
+  x instanceof Object && x[pathRefs] != null
 
-export const derefPathRef = (x) =>
-  pathRefs.get(x)
+export const derefPathRef = (x) => x()
 
 export const pathRefToArray = (x) =>
   isPathRef(x)

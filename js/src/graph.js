@@ -1,9 +1,7 @@
 import { compose, derive, isEmpty, last, isa, first } from './util.js'
 import * as r from './reducing.js'
 import * as xf from './xflib.js'
-import {
-  $, pathRefToArray, arrayViaPathRef, isPathRef, arrayToPathRef
-} from './pathref.js'
+import { $, isPathRef } from './pathref.js'
 
 const isObject = isa(Object)
 const isError = isa(Error)
@@ -54,7 +52,7 @@ const getAliasedPath = (nodes, path, previousAliases = new Set()) => {
       ? [] // if an alias loop is encountered.
       : getAliasedPath(
         nodes,
-        pathRefToArray(node).concat(subpath),
+        node().concat(subpath),
         previousAliases.add(node))
     : path
 }
@@ -100,7 +98,7 @@ const normalizePathInner = (nodes, dir, path) => {
 
 const normalizePath = (nodes, dir, path) => {
   path = normalizePathInner(nodes, dir, path)
-  return isBadPath(path) ? path : arrayViaPathRef(path)
+  return isBadPath(path) ? path : $(path)()
 }
 
 // New plan:
@@ -109,12 +107,12 @@ const normalizePath = (nodes, dir, path) => {
 // 3. redcuing over all subgraph nodes, merge in and out entries into new graph
 // 4. walk through normalized paths and confirm that no cycles exist
 const normalizeLink = ([srcPathRef, dstPathRef], nodes) => {
-  const srcPath = normalizePath(nodes, 'out', pathRefToArray(srcPathRef))
+  const srcPath = normalizePath(nodes, 'out', srcPathRef())
   if (isBadPath(srcPath)) {
     throw new Error(`Invalid source ref: ${srcPathRef}`)
   }
 
-  const dstPath = normalizePath(nodes, 'in', pathRefToArray(dstPathRef))
+  const dstPath = normalizePath(nodes, 'in', dstPathRef())
   if (isBadPath(dstPath)) {
     throw new Error(`Invalid destination ref: ${dstPathRef}`)
   }
@@ -134,7 +132,7 @@ const addElem = (s, e) => {
 const mergeLinks = (dst, src, pathref) =>
   isSet(src)
     ? Array.from(src)
-      .map(path => arrayViaPathRef(path, pathref))
+      .map(path => pathref(path)())
       .reduce(addElem, dst ?? new Set())
     : Object.entries(src)
       .reduce((dst, [name, src]) => {
@@ -172,7 +170,7 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
           compose(
             xf.dropWhile(path => path !== subpath),
             xf.append(subpath),
-            xf.map(arrayToPathRef),
+            xf.map(x => $(x)),
             xf.interpose(' -> ')
           )(r.sum),
           '',
@@ -271,7 +269,7 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
 
   const rootPaths = rootPathRefs
     .map(pathRef => {
-      const path = normalizePath(g.nodes, rootDir, pathRefToArray(pathRef))
+      const path = normalizePath(g.nodes, rootDir, pathRef())
       if (isBadPath(path)) {
         throw new Error(`Invalid rootPathRef: ${pathRef}`)
       }
@@ -280,7 +278,7 @@ export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out'
 
   const leafPaths = leafPathRefs
     .map(pathRef => {
-      const path = normalizePath(g.nodes, leafDir, pathRefToArray(pathRef))
+      const path = normalizePath(g.nodes, leafDir, pathRef())
       if (isBadPath(path)) {
         throw new Error(`Invalid leafPathRef: ${pathRef}`)
       }

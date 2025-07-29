@@ -59,26 +59,9 @@ export const $ = newPathRef([])
 export const isPathRef = (x) =>
   x instanceof Object && x[pathRefs] != null
 
-export const derefPathRef = (x) => x()
-
-export const pathRefToArray = (x) =>
+const pathRefToArray = (x) =>
   isPathRef(x)
-    ? derefPathRef(x)
+    ? x()
     : x
-
-/**
- * Return a pathRef equivilent to the given array. If `pathRef` is specified,
- * the returned pathRef will be a subpath of the it.
- */
-export const arrayToPathRef = (path, pathRef = $) =>
-  path.reduce(($, x) => $[x], pathRef)
-
-/**
- * Return an array with the same elements as those contained in `x`. The
- * returned array will be cached as a pathRef and so will be identical (i.e.,
- * `x===y`) to other pathRef arrays with the same values.
- */
-export const arrayViaPathRef = (x, pathRef = $) =>
-  pathRefToArray(arrayToPathRef(x, pathRef))
 
 export default $

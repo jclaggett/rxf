@@ -8,7 +8,7 @@ const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
   * @param {Array} path - The path to render.
   * @returns {String} A string representation of the path.
   */
-const renderPath = (path) =>
+const renderPathRef = (path) =>
   '$' + path
     .map(x =>
       isDottedLiteral(x)
@@ -32,8 +32,8 @@ export const newPathRef = (path) => {
   }, {
     [Symbol.toStringTag]: 'PathRef',
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
-      options.stylize(renderPath(path), 'special'),
-    [Symbol.toPrimitive]: () => renderPath(path),
+      options.stylize(renderPathRef(path), 'special'),
+    [Symbol.toPrimitive]: () => renderPathRef(path),
     [Symbol.iterator]: () => path[Symbol.iterator](),
     [pathRefs]: new Map()
   })

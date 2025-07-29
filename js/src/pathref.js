@@ -21,21 +21,36 @@ const renderPath = (path) =>
           : `['${x}']`)
     .join('')
 
-const newPathRef = (path) => {
-  const internalObject = Object.assign({}, {
+const subpaths = Symbol('subpaths')
+export const newPathRef = (path) => {
+  const internalObject = Object.assign((...colls) => {
+    if (colls.length === 0) {
+      return path
+    } else {
+      return colls.reduce(($, x) =>
+        pathRefToArray(x)
+          .reduce(($, y) => $[y], $),
+        ref)
+    }
+  }, {
     [Symbol.toStringTag]: 'PathRef',
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
       options.stylize(renderPath(path), 'special'),
     [Symbol.toPrimitive]: () => renderPath(path),
     [Symbol.iterator]: () => path[Symbol.iterator](),
+    [subpaths]: new Map()
   })
 
   const ref = new Proxy(internalObject, {
-    get: (subpaths, prop) => {
-      if (!(prop in subpaths)) {
-        subpaths[prop] = newPathRef([...path, prop])
+    get: (obj, prop) => {
+      if (typeof prop === 'symbol') {
+        return obj[prop]
       }
-      return subpaths[prop]
+
+      if (!obj[subpaths].has(prop)) {
+        obj[subpaths].set(prop, newPathRef([...path, prop]))
+      }
+      return obj[subpaths].get(prop)
     }
   })
 

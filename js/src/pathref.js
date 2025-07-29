@@ -22,7 +22,7 @@ const renderPath = (path) =>
     .join('')
 
 const newPathRef = (path) => {
-  const internalObject = Object.assign(() => path, {
+  const internalObject = Object.assign({}, {
     [Symbol.toStringTag]: 'PathRef',
     [Symbol.for('nodejs.util.inspect.custom')]: (_depth, options, _inspect) =>
       options.stylize(renderPath(path), 'special'),
@@ -60,10 +60,8 @@ export const pathRefToArray = (x) =>
  * Return a pathRef equivilent to the given array. If `pathRef` is specified,
  * the returned pathRef will be a subpath of the it.
  */
-export const arrayToPathRef = ([name, ...path], pathRef = $) =>
-  (name == null)
-    ? pathRef
-    : arrayToPathRef(path, pathRef[name])
+export const arrayToPathRef = (path, pathRef = $) =>
+  path.reduce(($, x) => $[x], pathRef)
 
 /**
  * Return an array with the same elements as those contained in `x`. The

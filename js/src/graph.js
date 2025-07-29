@@ -172,7 +172,7 @@ const walkForCycle = (paths, currentPath, walkedSet = new Set(), walkedArray = [
           compose(
             xf.dropWhile(path => path !== subpath),
             xf.append(subpath),
-            xf.map(path => arrayToPathRef(path)),
+            xf.map(arrayToPathRef),
             xf.interpose(' -> ')
           )(r.sum),
           '',

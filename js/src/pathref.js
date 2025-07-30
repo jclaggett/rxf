@@ -1,5 +1,5 @@
-const isDottedLiteral = (x) => /^[$a-zA-Z_][a-zA-Z0-9_]*$/.test(x)
-const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
+const dottedLiteralRegex = /^[$a-zA-Z_][a-zA-Z0-9_]*$/
+const indexLiteralRegex = /^[0-9]+$/
 
 /**
   * Return a string representation of a path. This is used to implement the
@@ -11,21 +11,25 @@ const isIndexLiteral = (x) => /^[0-9]+$/.test(x)
 const renderPathRef = (path) =>
   '$' + path
     .map(x =>
-      isDottedLiteral(x)
+      dottedLiteralRegex.test(x)
         ? `.${x}`
-        : isIndexLiteral(x)
+        : indexLiteralRegex.test(x)
           ? `[${x}]`
           : `['${x}']`)
     .join('')
 
 const pathRefs = Symbol('pathRefs')
-export const newPathRef = (path) => {
+
+export const isPathRef = (x) =>
+  x instanceof Object && x[pathRefs] != null
+
+export const createPathRef = (path) => {
   const internalObject = Object.assign((...colls) => {
     if (colls.length === 0) {
       return path
     } else {
       return colls.reduce(($, x) =>
-        pathRefToArray(x)
+        (isPathRef(x) ? x() : x)
           .reduce(($, y) => $[y], $),
         ref)
     }
@@ -45,7 +49,7 @@ export const newPathRef = (path) => {
       }
 
       if (!obj[pathRefs].has(prop)) {
-        obj[pathRefs].set(prop, newPathRef([...path, prop]))
+        obj[pathRefs].set(prop, createPathRef([...path, prop]))
       }
       return obj[pathRefs].get(prop)
     }
@@ -54,14 +58,5 @@ export const newPathRef = (path) => {
   return ref
 }
 
-export const $ = newPathRef([])
-
-export const isPathRef = (x) =>
-  x instanceof Object && x[pathRefs] != null
-
-const pathRefToArray = (x) =>
-  isPathRef(x)
-    ? x()
-    : x
-
+export const $ = createPathRef([])
 export default $

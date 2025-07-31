@@ -1,4 +1,24 @@
-import { $ } from '../pathref'
+import { $, createPathRef } from '../pathref'
+
+test('create pathref', () => {
+  const a = createPathRef(['a'])
+  expect(a instanceof Object)
+    .toStrictEqual(true)
+  expect(a() instanceof Array)
+    .toStrictEqual(true)
+  expect(a())
+    .toStrictEqual(['a'])
+  expect(a.b instanceof Object)
+    .toStrictEqual(true)
+  expect(a.b() instanceof Array)
+    .toStrictEqual(true)
+  expect(a.b())
+    .toStrictEqual(['a', 'b'])
+  expect(() => createPathRef(42))
+    .toThrow(TypeError)
+  expect(a === createPathRef['a'])
+    .toStrictEqual(false)
+})
 
 test('pathrefs', () => {
   const a = $.a
@@ -56,6 +76,8 @@ test('pathref as function', () => {
     .toBe($.a.b.c)
   expect($.a(['b', 'c'], $.d))
     .toBe($.a.b.c.d)
+  expect(() => $.a.b.c(1, 2, 3))
+    .toThrow(TypeError)
 })
 
 test('pathref custom printing', () => {

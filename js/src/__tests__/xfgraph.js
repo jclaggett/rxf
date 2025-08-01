@@ -2,11 +2,11 @@
 // 1. Coverage report should be at 100% when testing only this file.
 // 2. Tests should be defined only in terms of the public API.
 
-import { transduce, toArray } from '../reducing'
-import { map, take } from '../xflib'
-import { identity } from '../util'
-import { $ } from '../pathref'
-import { graph } from '../graph'
+import { transduce, toArray } from '../reducing.js'
+import { map, take } from '../xflib.js'
+import { identity } from '../util.js'
+import { $ } from '../datapath.js'
+import { graph } from '../graph.js'
 import {
   composeGraph, xfgraph, mapjoin, multiplex, demultiplex
 } from '../xfgraph'

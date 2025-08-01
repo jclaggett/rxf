@@ -3,8 +3,8 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { jest } from '@jest/globals'
-import { flatMap, map, take, emit, takeAll } from '../xflib'
-import { $ } from '../pathref'
+import { flatMap, map, take, emit, takeAll } from '../xflib.js'
+import { $ } from '../datapath.js'
 import { source, sink } from '../iograph.js'
 import { graph, chain } from '../graph.js'
 import { run } from '../runner.js'

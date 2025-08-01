@@ -3,7 +3,7 @@
 ## Outline
 1. util.js      - general purpose code
 
-2. pathref.js   - convenient syntax for paths with reference equality
+2. datapath.js   - convenient syntax for paths with reference equality
 3. graph.js     - defining graphs, subgraphs, and traversing those
 
 4. reducing.js  - reducer protocol with library of reducers
@@ -15,7 +15,7 @@
 ## Dependency Graph
 * util.js
 
-* pathref.js
+* datapath.js
 * graph.js
 | * reducing.js
 | * xflib.js

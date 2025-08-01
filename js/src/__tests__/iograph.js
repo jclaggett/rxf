@@ -3,7 +3,7 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { jest } from '@jest/globals'
-import { $ } from '../pathref'
+import { $ } from '../datapath.js'
 import * as r from '../reducing.js'
 import * as xflib from '../xflib.js'
 import * as graph from '../graph.js'

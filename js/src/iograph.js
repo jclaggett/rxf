@@ -3,7 +3,7 @@
 // internal transducer nodes are augmented to catch and forward exceptions on a
 // special 'err' node.
 
-import { $ } from './pathref.js'
+import { $ } from './datapath.js'
 import * as util from './util.js'
 import * as r from './reducing.js'
 import * as xflib from './xflib.js'

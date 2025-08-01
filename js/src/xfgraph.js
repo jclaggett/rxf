@@ -4,7 +4,7 @@
 
 import { transducer, STEP } from './reducing.js'
 import { map, tag, detag, spread, merge, takeAll } from './xflib.js'
-import { $ } from './pathref.js'
+import { $ } from './datapath.js'
 import { graph, walkGraph } from './graph.js'
 import { identity, compose } from './util.js'
 
@@ -57,9 +57,9 @@ export const xfgraph = (g, {
   rootPathRefs = [],
   leafPathRefs = []
 } = {
-  rootPathRefs: [],
-  leafPathRefs: []
-}) => {
+    rootPathRefs: [],
+    leafPathRefs: []
+  }) => {
   const xfs = composeGraph(g, {
     leafFn: ([name], _value) => [tag(name)],
     rootFn: ([name], _value) => [detag(name)],

@@ -1,7 +1,7 @@
 import { compose, derive, isEmpty, last, isa, first } from './util.js'
 import * as r from './reducing.js'
 import * as xf from './xflib.js'
-import { $, isPathRef } from './pathref.js'
+import { $, isDataPath } from './datapath.js'
 
 const isObject = isa(Object)
 const isError = isa(Error)
@@ -47,7 +47,7 @@ const getNode = (x, [name, ...subpath]) =>
 const getAliasedPath = (nodes, path, previousAliases = new Set()) => {
   const [name, ...subpath] = path
   const node = nodes[name]
-  return isPathRef(node)
+  return isDataPath(node)
     ? previousAliases.has(node)
       ? [] // if an alias loop is encountered.
       : getAliasedPath(
@@ -102,19 +102,19 @@ const normalizePath = (nodes, dir, path) => {
 }
 
 // New plan:
-// 1. normalize each pathref in each link into a path (array) and complain if that path is not pointing to a valid node.
+// 1. normalize each datapath in each link into a path (array) and complain if that path is not pointing to a valid node.
 // 2. reducing over the normalized links, add in and out entries
 // 3. redcuing over all subgraph nodes, merge in and out entries into new graph
 // 4. walk through normalized paths and confirm that no cycles exist
-const normalizeLink = ([srcPathRef, dstPathRef], nodes) => {
-  const srcPath = normalizePath(nodes, 'out', srcPathRef())
+const normalizeLink = ([srcDataPath, dstDataPath], nodes) => {
+  const srcPath = normalizePath(nodes, 'out', srcDataPath())
   if (isBadPath(srcPath)) {
-    throw new Error(`Invalid source ref: ${srcPathRef}`)
+    throw new Error(`Invalid source ref: ${srcDataPath}`)
   }
 
-  const dstPath = normalizePath(nodes, 'in', dstPathRef())
+  const dstPath = normalizePath(nodes, 'in', dstDataPath())
   if (isBadPath(dstPath)) {
-    throw new Error(`Invalid destination ref: ${dstPathRef}`)
+    throw new Error(`Invalid destination ref: ${dstDataPath}`)
   }
   return [srcPath, dstPath]
 }
@@ -129,14 +129,14 @@ const addElem = (s, e) => {
   return s.add(e)
 }
 
-const mergeLinks = (dst, src, pathref) =>
+const mergeLinks = (dst, src, datapath) =>
   isSet(src)
     ? Array.from(src)
-      .map(path => pathref(path)())
+      .map(path => datapath(path)())
       .reduce(addElem, dst ?? new Set())
     : Object.entries(src)
       .reduce((dst, [name, src]) => {
-        dst[name] = mergeLinks(dst[name], src, pathref)
+        dst[name] = mergeLinks(dst[name], src, datapath)
         return dst
       }, dst ?? {})
 
@@ -263,24 +263,24 @@ export const chain = (...nodes) =>
  *       were not listed in `leafPaths`)
  *
  */
-export const walkGraph = (g, rootPathRefs, leafPathRefs, walkFn, leafDir = 'out') => {
+export const walkGraph = (g, rootDataPaths, leafDataPaths, walkFn, leafDir = 'out') => {
   g = ensureGraph(g)
   const rootDir = leafDir === 'out' ? 'in' : 'out'
 
-  const rootPaths = rootPathRefs
-    .map(pathRef => {
-      const path = normalizePath(g.nodes, rootDir, pathRef())
+  const rootPaths = rootDataPaths
+    .map(dataPath => {
+      const path = normalizePath(g.nodes, rootDir, dataPath())
       if (isBadPath(path)) {
-        throw new Error(`Invalid rootPathRef: ${pathRef}`)
+        throw new Error(`Invalid rootDataPath: ${dataPath}`)
       }
       return path
     })
 
-  const leafPaths = leafPathRefs
-    .map(pathRef => {
-      const path = normalizePath(g.nodes, leafDir, pathRef())
+  const leafPaths = leafDataPaths
+    .map(dataPath => {
+      const path = normalizePath(g.nodes, leafDir, dataPath())
       if (isBadPath(path)) {
-        throw new Error(`Invalid leafPathRef: ${pathRef}`)
+        throw new Error(`Invalid leafDataPath: ${dataPath}`)
       }
       return path
     })

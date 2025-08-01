@@ -1,4 +1,4 @@
-import { $, createRoot } from '../pathref'
+import { $, createRoot } from '../datapath'
 
 test('createRoot', () => {
   const a = createRoot()
@@ -19,7 +19,7 @@ test('createRoot', () => {
     .toStrictEqual(false)
 })
 
-test('pathrefs', () => {
+test('datapath general operations', () => {
   const a = $.a
   const b = a.b
   expect(a.b() === b())
@@ -38,7 +38,7 @@ test('pathrefs', () => {
     .toBe($(['a', 'b', 'c'])())
 })
 
-test('pathref as object', () => {
+test('datapath as object', () => {
   expect($.a.b.c)
     .toBe($.a.b.c)
   expect($.a[2].c)
@@ -51,7 +51,7 @@ test('pathref as object', () => {
     .toBe($.a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z)
 })
 
-test('pathref as array', () => {
+test('datapath as array', () => {
   expect([...$])
     .toStrictEqual([])
   expect([...$.a.b.c])
@@ -62,7 +62,7 @@ test('pathref as array', () => {
     .toStrictEqual(['a', '2', 'c'])
 })
 
-test('pathref as function', () => {
+test('datapath as function', () => {
   expect($.a.b.c())
     .toStrictEqual(['a', 'b', 'c'])
   expect($.a[2].c())
@@ -79,7 +79,7 @@ test('pathref as function', () => {
     .toThrow(TypeError)
 })
 
-test('pathref custom printing', () => {
+test('datapath custom printing', () => {
   expect(`${$.a.b.c}`)
     .toStrictEqual('$.a.b.c')
   expect(`${$.a[2].c}`)
@@ -94,7 +94,7 @@ test('pathref custom printing', () => {
     .toStrictEqual('$.a.b.c')
 })
 
-test('pathref as iterator', () => {
+test('datapath as iterator', () => {
   expect([...$[0][1][2]])
     .toStrictEqual(['0', '1', '2'])
   expect([...$.a.b.c])

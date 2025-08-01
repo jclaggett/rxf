@@ -3,8 +3,8 @@
 // 2. Tests should be defined only in terms of the public API.
 
 import { jest } from '@jest/globals'
-import { $ } from '../pathref'
-import { graph, isGraph, ensureGraph, walkGraph, chain, pg } from '../graph'
+import { $ } from '../datapath.js'
+import { graph, isGraph, ensureGraph, walkGraph, chain, pg } from '../graph.js'
 
 const s = (...args) => new Set(args)
 

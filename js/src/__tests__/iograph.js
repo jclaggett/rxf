@@ -2,6 +2,7 @@
 // 1. Coverage report should be at 100% when testing only this file.
 // 2. Tests should be defined only in terms of the public API.
 
+import { jest } from '@jest/globals'
 import { $ } from '../pathref'
 import * as r from '../reducing.js'
 import * as xflib from '../xflib.js'
@@ -126,6 +127,9 @@ test('iograph child graphs work', async () => {
 })
 
 test('iograph error handling works', async () => {
+  const originalWarn = console.warn
+  console.warn = jest.fn()
+
   const gDef = {
     nodes: {
       init: iograph.source('init'),
@@ -158,6 +162,8 @@ test('iograph error handling works', async () => {
   await new Promise(resolve => resolve())
   gRunEH.stop()
   await p
+
+  console.warn = originalWarn
 })
 
 test('iograph call sinks can use input parameter.', async () => {

@@ -23,10 +23,7 @@ const pathRefs = Symbol('pathRefs')
 export const isPathRef = (x) =>
   x instanceof Object && x[pathRefs] != null
 
-export const createPathRef = (path) => {
-  if (!Array.isArray(path)) {
-    throw new TypeError(`PathRef must be created with an array, got ${path} (type: ${typeof path})`)
-  }
+const createPathRef = (path) => {
   const internalObject = Object.assign((...colls) => {
     if (colls.length === 0) {
       return path
@@ -66,5 +63,7 @@ export const createPathRef = (path) => {
   return ref
 }
 
-export const $ = createPathRef([])
+export const createRoot = () =>
+  createPathRef([])
+export const $ = createRoot()
 export default $

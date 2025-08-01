@@ -1,22 +1,21 @@
-import { $, createPathRef } from '../pathref'
+import { $, createRoot } from '../pathref'
 
-test('create pathref', () => {
-  const a = createPathRef(['a'])
+test('createRoot', () => {
+  const a = createRoot()
+  const b = createRoot()
   expect(a instanceof Object)
     .toStrictEqual(true)
   expect(a() instanceof Array)
     .toStrictEqual(true)
   expect(a())
-    .toStrictEqual(['a'])
+    .toStrictEqual([])
   expect(a.b instanceof Object)
     .toStrictEqual(true)
   expect(a.b() instanceof Array)
     .toStrictEqual(true)
   expect(a.b())
-    .toStrictEqual(['a', 'b'])
-  expect(() => createPathRef(42))
-    .toThrow(TypeError)
-  expect(a === createPathRef['a'])
+    .toStrictEqual(['b'])
+  expect(a.b === b.b)
     .toStrictEqual(false)
 })
 
